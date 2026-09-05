@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-09-05
+
+- Added conditional delegation, host-aware context selection, bounded handoffs, and stale-result checks to the shared economy policy and plan/build/review skills.
+- Preserved fresh integrated-state verification and authorization gates.
+- Extended behavior checks for independent investigations, shared-state ownership, and stale worker results, with paired-evaluation guidance.
+
+- Recorded an adversarial review of the sub-agent optimization proposal, preserving verification gates and qualifying evidence transfer and host context behavior.
 
 - Added five disposable behavior fixtures, a filesystem checker, and a transcript-review rubric for release checks.
 

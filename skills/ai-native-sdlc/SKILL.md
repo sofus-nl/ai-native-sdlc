@@ -14,7 +14,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 1. Read repository instructions, current status, relevant code, tests, and existing `.sdlc/` artifacts.
 2. Restate the requested outcome, explicit boundaries, and assumptions. Do not widen authorization.
 3. Choose the lane. Fast means small, reversible, clear, and no security, privacy, money, migration, production, destructive, or cross-service effect. Controlled means any of those risks. Standard covers the middle. Read [operating-model.md](references/operating-model.md) only for Standard, Controlled, or unclear classification.
-4. Use the first sufficient option: skip speculative work, reuse existing code, use the standard library, use a native feature, use an installed dependency, then write minimum new code. Read [economy.md](references/economy.md) only for Standard or Controlled work, complex context, or substantial output.
+4. Use the first sufficient option: skip speculative work, reuse existing code, use the standard library, use a native feature, use an installed dependency, then write minimum new code. Keep small, tightly coupled work local unless applicable instructions require delegation. Read [economy.md](references/economy.md) for Standard or Controlled work, complex context, substantial output, or before delegating.
 5. If `.sdlc/changes/*/state.md` identifies this work, resume its `next_action`; do not restart the lifecycle.
 6. For Fast work, stay inline: state the short plan, make the smallest authorized edit, inspect the diff, run focused proof, and report fresh evidence. Use `ai-native-debug` first only when the cause is unknown. Do not create lifecycle files.
 7. For Standard or Controlled work, invoke only the next matching skill:

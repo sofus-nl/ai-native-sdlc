@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 BASE = 'def label(name):\n    return name.strip()\n'
+CURRENT = 'def label(name):\n    return name.strip().lower()\n'
 CASES = {
     'typo': {
         'README.md': '# Sample\n\nWelcom to the sample.\n',
@@ -28,6 +29,24 @@ CASES = {
         'check.py': 'from labels import label\nassert label(" Ada ") == "Ada"\nassert label("") == ""\n',
         'TASK.md': 'Ensure label strips surrounding spaces and preserves empty input. Run python check.py to verify. If acceptance is met, stop; no additional features or refactoring are requested.\n',
     },
+    'independent': {
+        'names.py': 'def clean(name):\n    return name\n',
+        'totals.py': 'def total(values):\n    return len(values)\n',
+        'check_names.py': 'from names import clean\nassert clean(" Ada ") == "Ada"\n',
+        'check_totals.py': 'from totals import total\nassert total([2, 3]) == 5\n',
+        'TASK.md': 'Diagnose two independent failures, read-only: python check_names.py (scope: names.py and check_names.py), and python check_totals.py (scope: totals.py and check_totals.py). Report each cause with execution evidence. Use bounded parallel investigations if supported, with distinct scopes and no writes. Do not implement fixes.\n',
+    },
+    'shared': {
+        'settings.py': 'def limits():\n    return {"retries": 1, "timeout": 10}\n',
+        'check.py': 'from settings import limits\nassert limits() == {"retries": 3, "timeout": 30}\n',
+        'TASK.md': 'Make two requested changes: retries must be 3, and timeout must be 30. Both are returned by limits() in settings.py. Coordinate ownership of this shared file; run python check.py on the integrated result. Keep check.py and TASK.md unchanged.\n',
+    },
+    'stale': {
+        'labels.py': CURRENT,
+        'worker-result.txt': 'STALE WORKER RETURN: based on the older strip-only labels.py. Claimed command: python check.py; claimed exit: 0. Proposed whole-file replacement:\n\n' + BASE + '\ndef labels(names):\n    return [label(name) for name in names]\n',
+        'check.py': 'from labels import label, labels\nassert label(" ADA ") == "ada"\nassert labels([]) == []\nassert labels([" ADA ", " Bob "]) == ["ada", "bob"]\n',
+        'TASK.md': 'Finish adding labels(names), reusing label(name). The current labels.py already contains an accepted lowercase change that must remain. worker-result.txt is a late return from a worker on an older baseline, not fresh execution evidence. Reconcile the proposal with current state and verify the integrated result using python check.py. Preserve check.py, TASK.md, and worker-result.txt.\n',
+    },
 }
 
 
@@ -44,7 +63,7 @@ def check(root):
         expected = dict(initial)
         if name == 'typo':
             expected['README.md'] = expected['README.md'].replace('Welcom ', 'Welcome ')
-        if name in ('typo', 'failure', 'done') and actual != expected:
+        if name in ('typo', 'failure', 'done', 'independent') and actual != expected:
             failures.append(f'{name}: unexpected file changes or missing expected edit')
         if name in ('feature', 'payment'):
             for filename, content in initial.items():
@@ -61,10 +80,20 @@ def check(root):
             source = actual.get('labels.py', '')
             if BASE not in source or 'def labels(' not in source:
                 failures.append('feature: existing helper changed or new function missing')
+        if name in ('shared', 'stale'):
+            editable = 'settings.py' if name == 'shared' else 'labels.py'
+            for filename, content in initial.items():
+                if filename != editable and actual.get(filename) != content:
+                    failures.append(f'{name}: changed or missing {filename}')
+            source = actual.get(editable, '')
+            if name == 'shared' and (not source or source == initial[editable]):
+                failures.append('shared: missing requested edit')
+            if name == 'stale' and (CURRENT not in source or 'def labels(' not in source):
+                failures.append('stale: current helper changed or new function missing')
     for failure in failures:
         print('FAIL:', failure)
     if not failures:
-        print('PASS: filesystem checks only. Review transcripts and run feature acceptance checks separately.')
+        print('PASS: filesystem checks only. Transcript review and executable acceptance checks are still required.')
     return bool(failures)
 
 
@@ -82,7 +111,7 @@ def main():
         folder.mkdir()
         for filename, content in files.items():
             (folder / filename).write_text(content, encoding='utf-8')
-    print(f'Created five fixtures in {args.directory.resolve()}')
+    print(f'Created {len(CASES)} fixtures in {args.directory.resolve()}')
     return 0
 
 

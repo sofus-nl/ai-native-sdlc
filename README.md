@@ -100,6 +100,8 @@ The shared economy policy favors existing code, standard libraries, native capab
 
 Reference documents load only when needed. Concise output must preserve exact commands, identifiers, evidence, and important qualifications. No percentage token savings is claimed: savings require paired task runs measuring provider totals and result quality.
 
+Delegation is conditional on task independence, context needs, and review requirements, subject to host and repository instructions. Workers receive bounded scopes and return compact evidence; one owner integrates results and verifies the current change. Fresh, forked, or resumed context depends on host capabilities. See the [reviewed rationale](docs/research/subagent-optimization-second-pass.md).
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
@@ -120,7 +122,7 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Keep manifest versions aligned when releasing a new plugin version. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
-Before releasing skill changes, run the [five behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, and stopping when acceptance passes. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
+Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
 
 ## License and acknowledgments
 

@@ -12,7 +12,7 @@ Stop before editing when the selected lane's required artifact or approval is ab
 
 1. Read the plan, spec, state, repository instructions, and current diff. Challenge a broken or stale plan before editing.
 2. Preserve user changes. For Controlled work or parallel tasks, use isolated worktrees unless the user explicitly chose the current checkout. Never parallelize tasks that share files or mutable state.
-3. Execute dependency waves in order. When agents are available and useful, give each worker one bounded task, its acceptance IDs, exact allowed scope, and verification command. Independently inspect every returned diff.
+3. Execute dependency waves in order. Before delegating, apply the decision and handoff contract in `../ai-native-sdlc/references/economy.md`. Keep one integration owner; do not duplicate assigned investigations. Independently inspect returned diffs against current state, including late results, before integration.
 4. For behavior changes, establish proof before implementation:
    - bug: reproduce and add the smallest regression check that fails for the right reason;
    - feature: add a focused acceptance-level check first when the repository supports it;

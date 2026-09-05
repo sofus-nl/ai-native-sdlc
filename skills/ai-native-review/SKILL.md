@@ -14,7 +14,7 @@ Bind the review to the exact reviewed revision or diff. Any later code change in
 
 ## Passes
 
-Use fresh-context reviewers when available; otherwise separate the passes explicitly.
+Use a fresh-context reviewer when available, following `../ai-native-sdlc/references/economy.md`; otherwise separate the passes explicitly without claiming independent review. One reviewer may cover all passes; add specialists when distinct risk or policy requires them. Supply the authoritative inputs, not the author's persuasive account of correctness. A new agent alone does not guarantee fresh context or unbiased judgment.
 
 1. **Outcome pass:** Map every acceptance ID and explicit boundary to the diff and proof. Find omissions, unrequested behavior, plan drift, and incompatible interfaces.
 2. **Engineering pass:** Inspect changed code in context for correctness, edge cases, concurrency, data loss, security, privacy, operability, and maintainability. Trace important changed functions through callers.
