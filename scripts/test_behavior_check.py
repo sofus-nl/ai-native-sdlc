@@ -40,7 +40,9 @@ class BehaviorCheckTest(unittest.TestCase):
                                        ('done', 'labels.py'), ('payment', 'payments.py'),
                                        ('feature', 'labels.py'), ('independent', 'names.py'),
                                        ('independent', 'extra.md'), ('shared', 'check.py'),
-                                       ('stale', 'worker-result.txt'), ('stale', 'check.py')):
+                                       ('stale', 'worker-result.txt'), ('stale', 'check.py'),
+                                       ('model-override', 'MODEL_CONTROLS.md'),
+                                       ('qualification', 'EVIDENCE.md'), ('cost-retry', 'RUNS.md')):
                     path = root / name / filename
                     previous = path.read_text(encoding='utf-8') if path.exists() else None
                     path.write_text('unexpected edit\n', encoding='utf-8')

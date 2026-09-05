@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added on-demand, task-qualified model selection through the shared economy policy, preserving baseline fallback, host-control boundaries, complete-cost accounting, and existing verification gates.
+- Added three read-only model-selection scenarios and checker regressions for substitution, qualification gaps, and retry costs; live cross-host behavior and model-quality qualification remain untested.
+- Recorded the model-routing second-pass review, qualifying model tiers, aggregate parity, full-attempt cost, and requested-versus-observed execution identity.
+
 ## 0.4.0 - 2026-09-05
 
 - Added conditional delegation, host-aware context selection, bounded handoffs, and stale-result checks to the shared economy policy and plan/build/review skills.

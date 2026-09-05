@@ -102,6 +102,8 @@ Reference documents load only when needed. Concise output must preserve exact co
 
 Delegation is conditional on task independence, context needs, and review requirements, subject to host and repository instructions. Workers receive bounded scopes and return compact evidence; one owner integrates results and verifies the current change. Fresh, forked, or resumed context depends on host capabilities. See the [reviewed rationale](docs/research/subagent-optimization-second-pass.md).
 
+Model selection uses an [on-demand policy](skills/ai-native-sdlc/references/model-selection.md): retain the configured baseline until task-specific evidence supports a cheaper model/effort configuration. The eight named model families are candidates, not preset tiers. Native host controls govern execution; unsupported overrides and unverified model identity are reported. Complete-task cost includes retries and verification. No automatic router, cross-provider access, or guarantee of equal quality is bundled. See the [reviewed rationale](docs/research/model-routing-second-pass.md).
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
