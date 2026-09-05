@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added five disposable behavior fixtures, a filesystem checker, and a transcript-review rubric for release checks.
+
 - Added public installation, usage, troubleshooting, and contribution documentation.
 - Prepared the shared Claude Code and Codex package for sofus-nl/ai-native-sdlc.
 

@@ -120,6 +120,8 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Keep manifest versions aligned when releasing a new plugin version. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
+Before releasing skill changes, run the [five behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, and stopping when acceptance passes. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
+
 ## License and acknowledgments
 
 [MIT](LICENSE). See [third-party method references](THIRD_PARTY_NOTICES.md) for sources and attribution. This project is not affiliated with or endorsed by Anthropic, OpenAI, or the referenced framework authors.
