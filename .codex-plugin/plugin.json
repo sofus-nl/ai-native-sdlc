@@ -1,0 +1,24 @@
+{
+  "name": "ai-native-sdlc",
+  "version": "0.3.0",
+  "description": "Lean, risk-sized, artifact-driven software delivery for Codex and Claude Code.",
+  "author": {
+    "name": "AI-Native SDLC Contributors"
+  },
+  "license": "MIT",
+  "keywords": ["sdlc", "planning", "testing", "review", "delivery"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AI-Native SDLC",
+    "shortDescription": "Build less. Prove it. Ship safely.",
+    "longDescription": "A lean delivery loop for Codex: compact context, intent and specification, minimal implementation, independent review, fresh verification, controlled release, and operational learning.",
+    "developerName": "AI-Native SDLC Contributors",
+    "category": "Coding",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Take this change from intent to verified delivery.",
+      "Plan and build this with risk-sized gates.",
+      "Review this change against its intent and evidence."
+    ]
+  }
+}

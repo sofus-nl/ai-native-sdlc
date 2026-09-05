@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ai-native-sdlc-marketplace",
+  "description": "Lean AI-native software delivery skills for Claude Code.",
+  "owner": {
+    "name": "AI-Native SDLC Contributors"
+  },
+  "plugins": [
+    {
+      "name": "ai-native-sdlc",
+      "source": "./",
+      "description": "Build less. Prove it. Ship safely."
+    }
+  ]
+}

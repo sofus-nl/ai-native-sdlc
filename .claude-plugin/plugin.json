@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ai-native-sdlc",
+  "displayName": "AI-Native SDLC",
+  "version": "0.3.0",
+  "description": "Lean, risk-sized, artifact-driven software delivery for Claude Code.",
+  "author": {
+    "name": "AI-Native SDLC Contributors"
+  },
+  "license": "MIT",
+  "keywords": ["sdlc", "planning", "testing", "review", "delivery"]
+}
