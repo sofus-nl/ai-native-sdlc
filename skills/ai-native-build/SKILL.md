@@ -19,7 +19,7 @@ Stop before editing when the selected lane's required artifact or approval is ab
    - unsuitable test-first work such as generated files or pure configuration: state the alternative observable check.
 5. Implement the first solution-ladder rung that satisfies the current task. Follow existing style. Remove only imports or code orphaned by this change.
 6. Run the focused check, then the nearest relevant suite. Fix production code when a valid test fails; do not weaken acceptance to make it pass.
-7. Review the task diff against its acceptance IDs before starting the next task.
+7. Review the task diff against its acceptance IDs before starting the next task. When Git checkpoints are authorized, apply `../ai-native-sdlc/references/checkpoints.md`: commit coherent checked increments and push for CI, feedback, or handoff within the permitted scope. Do not defer every checkpoint until the entire build finishes or confuse a branch push with merge readiness.
 8. Record any material deviation in `plan.md` and `state.md` immediately. If the desired outcome changed, return to `ai-native-shape`; if only the approach changed, return to `ai-native-plan`.
 9. After all tasks, update state to `reviewing` and invoke `ai-native-review`.
 

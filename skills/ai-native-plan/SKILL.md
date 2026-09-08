@@ -16,8 +16,8 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 5. Write `plan.md` using `../ai-native-sdlc/references/artifact-contracts.md`.
 6. Map every acceptance ID to proof. For a bug, the proof must fail for the observed defect before the fix when feasible. For UI, include an observable visual check. For integration risk, put a thin tracer slice first.
 7. Divide work into reviewer-sized tasks. Mark dependencies and what blocks the next decision; assign one integration owner. Use the economy reference's delegation rule to decide which tasks, if any, need workers. Group independent, non-overlapping tasks into waves; shared files or mutable state stay sequential.
-8. Name migrations, compatibility, telemetry, rollout, and rollback only when the change actually needs them.
-9. Interrogate the plan: what could break, what is most uncertain, what assumption lacks evidence, and how recovery works.
+8. Name migrations, compatibility, telemetry, rollout, and rollback only when the change actually needs them. For public-contract changes or release planning, read `../ai-native-sdlc/references/semver.md`; record the release baseline, proposed version, and compatibility rationale without publishing.
+9. When Git delivery is in scope, apply `../ai-native-sdlc/references/checkpoints.md`: mark coherent commit/share points, focused proof, and authorized destinations in the existing tasks. Interrogate the plan: what could break, what is most uncertain, what assumption lacks evidence, and how recovery works.
 10. Update `state.md` to `planned` only after the required plan gate is accepted. Then hand off to `ai-native-build`.
 
 ## Plan quality bar

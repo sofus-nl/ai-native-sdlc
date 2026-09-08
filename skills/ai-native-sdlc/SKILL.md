@@ -24,7 +24,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
    - defect or failed check with unknown cause -> `ai-native-debug`
    - completed diff needing assessment -> `ai-native-review`
    - claim needing proof -> `ai-native-verify`
-   - verified change needing release -> `ai-native-ship`
+   - authorized Git delivery or verified change needing release -> `ai-native-ship`
    - production signal, incident, or learning -> `ai-native-operate`
 
 ## Invariants
@@ -40,6 +40,10 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 - Completion claims require fresh evidence. Standard and Controlled work use `ai-native-verify`; Fast work may verify inline.
 
 For artifact shapes, read [artifact-contracts.md](references/artifact-contracts.md) only when creating or updating lifecycle files.
+
+For version selection or release compatibility, read [semver.md](references/semver.md). Apply it to the software being delivered, not just this plugin; preserve explicit repository policy and release authorization.
+
+For authorized Git checkpoints, including Fast work, apply [checkpoints.md](references/checkpoints.md). Commit, branch push, merge, and release have distinct evidence and authorization boundaries.
 
 ## Output
 

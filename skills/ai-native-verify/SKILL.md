@@ -9,7 +9,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 
 ## Workflow
 
-1. List the claims that must be true: acceptance IDs, original symptom, compatibility, build health, and release readiness.
+1. List the claims that must be true: acceptance IDs, original symptom, compatibility, build health, and release readiness. For versioned-release claims, apply `../ai-native-sdlc/references/semver.md`; version syntax alone does not prove a compatible change or a correct bump.
 2. Map each claim to the narrowest authoritative command or observation. Tests prove behavior they exercise; lint does not prove build; build does not prove production.
 3. Run every required check fresh in the current environment. Read the full result, exit status, failure count, and relevant warnings.
 4. For a regression check, prove it detects the bug: use the recorded pre-fix failure, or temporarily reverse only the fix when safe and restore it immediately. Do not perform destructive proof.

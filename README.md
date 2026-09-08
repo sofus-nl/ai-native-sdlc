@@ -104,6 +104,10 @@ Delegation is conditional on task independence, context needs, and review requir
 
 Model selection uses an [on-demand policy](skills/ai-native-sdlc/references/model-selection.md): retain the configured baseline until task-specific evidence supports a cheaper model/effort configuration. The eight named model families are candidates, not preset tiers. Native host controls govern execution; unsupported overrides and unverified model identity are reported. Complete-task cost includes retries and verification. No automatic router, cross-provider access, or guarantee of equal quality is bundled. See the [reviewed rationale](docs/research/model-routing-second-pass.md).
 
+## Semantic versioning
+
+For the software you build with this plugin, planning, verification, and shipping use [the SemVer reference](skills/ai-native-sdlc/references/semver.md). Agents identify the public contract, justify the version bump against the complete release, check version consistency, and preserve released versions. Explicit repository versioning policies are not silently migrated. Ordinary non-release edits do not trigger automatic bumps or publication.
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
@@ -122,7 +126,7 @@ claude plugin validate .claude-plugin/plugin.json --strict
 claude plugin validate .claude-plugin/marketplace.json --strict
 ```
 
-Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Keep manifest versions aligned when releasing a new plugin version. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
+Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Follow [Semantic Versioning 2.0.0](https://semver.org/) using the [public API and release policy](docs/versioning.md). Run `python scripts/check_version.py` to check version syntax, manifest alignment, and the current changelog entry; CI runs the same check. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
 Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
 
