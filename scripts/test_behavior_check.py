@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from behavior_check import BASE, CASES, CURRENT, check
+from behavior_check import BASE, CASES, CURRENT, PAYMENTS, check
 
 
 class BehaviorCheckTest(unittest.TestCase):
@@ -29,7 +29,10 @@ class BehaviorCheckTest(unittest.TestCase):
                 (root / 'stale' / 'labels.py').write_text(
                     CURRENT + '\ndef labels(names):\n    return [label(name) for name in names]\n',
                     encoding='utf-8')
-                for name in ('feature', 'payment'):
+                (root / 'payment-build' / 'payments.py').write_text(
+                    PAYMENTS.replace('    return {"charged"', '    if not isinstance(cents, int) or cents <= 0:\n        raise ValueError(cents)\n    return {"charged"'),
+                    encoding='utf-8')
+                for name in ('feature', 'payment', 'payment-build'):
                     artifacts = root / name / '.sdlc' / 'changes' / 'sample'
                     artifacts.mkdir(parents=True)
                     for filename in ('intent.md', 'state.md'):
@@ -37,7 +40,7 @@ class BehaviorCheckTest(unittest.TestCase):
                     (artifacts / 'spec.md').write_text('Reference oracle: none\n', encoding='utf-8')
                     (artifacts / 'plan.md').write_text('Checkpoints:\n1. Tracer slice\n', encoding='utf-8')
                 self.assertFalse(check(root))
-                for name in ('feature', 'payment'):
+                for name in ('feature', 'payment', 'payment-build'):
                     for filename in ('spec.md', 'plan.md'):
                         path = root / name / '.sdlc' / 'changes' / 'sample' / filename
                         previous = path.read_text(encoding='utf-8')
@@ -47,6 +50,7 @@ class BehaviorCheckTest(unittest.TestCase):
                 # Each regression must independently fail an otherwise green tree.
                 for name, filename in (('typo', 'extra.md'), ('failure', 'labels.py'),
                                        ('done', 'labels.py'), ('payment', 'payments.py'),
+                                       ('payment-build', 'TASK.md'),
                                        ('feature', 'labels.py'), ('independent', 'names.py'),
                                        ('independent', 'extra.md'), ('shared', 'check.py'),
                                        ('stale', 'worker-result.txt'), ('stale', 'check.py'),
@@ -62,6 +66,7 @@ class BehaviorCheckTest(unittest.TestCase):
                         path.write_text(previous, encoding='utf-8')
                 for name, filename, regression in (
                     ('shared', 'settings.py', CASES['shared']['settings.py']),
+                    ('payment-build', 'payments.py', PAYMENTS),
                     ('stale', 'labels.py', CURRENT),
                     ('stale', 'labels.py', BASE + '\ndef labels(names):\n    return [label(name) for name in names]\n'),
                 ):

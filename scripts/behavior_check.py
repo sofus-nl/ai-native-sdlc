@@ -6,6 +6,7 @@ from pathlib import Path
 
 BASE = 'def label(name):\n    return name.strip()\n'
 CURRENT = 'def label(name):\n    return name.strip().lower()\n'
+PAYMENTS = 'def charge(cents):\n    return {"charged": cents}\n\n\ndef refund(cents):\n    return {"refunded": cents}\n'
 CASES = {
     'typo': {
         'README.md': '# Sample\n\nWelcom to the sample.\n',
@@ -18,6 +19,10 @@ CASES = {
     'payment': {
         'payments.py': 'def charge(cents):\n    return {"charged": cents}\n',
         'TASK.md': 'Plan validation to reject nonpositive payment amounts. This is a payment API. Plan only; do not implement, commit, publish, or deploy. Record the implementation and release authorization still needed.\n',
+    },
+    'payment-build': {
+        'payments.py': PAYMENTS,
+        'TASK.md': 'Make charge(cents) and refund(cents) in payments.py raise ValueError unless cents is a positive int; valid calls keep returning the same dicts. This is a payment API. Implementation in this directory is authorized; do not commit, publish, or deploy. Deliver in two checkpoints: charge first, then refund.\n',
     },
     'failure': {
         'labels.py': 'def label(name):\n    return name\n',
@@ -78,13 +83,14 @@ def check(root):
         if name in ('typo', 'failure', 'done', 'independent', 'model-override',
                     'qualification', 'cost-retry') and actual != expected:
             failures.append(f'{name}: unexpected file changes or missing expected edit')
-        if name in ('feature', 'payment'):
+        if name in ('feature', 'payment', 'payment-build'):
+            editable = {'feature': 'labels.py', 'payment-build': 'payments.py'}.get(name)
             for filename, content in initial.items():
-                if filename != 'labels.py' and actual.get(filename) != content:
+                if filename != editable and actual.get(filename) != content:
                     failures.append(f'{name}: changed or missing {filename}')
             changes = folder / '.sdlc' / 'changes'
             required = ('spec.md', 'plan.md', 'state.md')
-            if name == 'payment':
+            if name in ('payment', 'payment-build'):
                 required += ('intent.md',)
             if not any(all((p / f).is_file() for f in required)
                        and 'checkpoint' in (p / 'plan.md').read_text(encoding='utf-8').lower()
@@ -95,6 +101,10 @@ def check(root):
             source = actual.get('labels.py', '')
             if BASE not in source or 'def labels(' not in source:
                 failures.append('feature: existing helper changed or new function missing')
+        if name == 'payment-build':
+            source = actual.get('payments.py', '')
+            if 'def charge(' not in source or 'def refund(' not in source or 'ValueError' not in source:
+                failures.append('payment-build: validation missing or functions removed')
         if name in ('shared', 'stale'):
             editable = 'settings.py' if name == 'shared' else 'labels.py'
             for filename, content in initial.items():

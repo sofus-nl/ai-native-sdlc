@@ -49,7 +49,7 @@ approvals:
   - gate: intent|design|plan|checkpoint|review|release
     decision: accepted|rejected
     by: human identity or human-confirmed-in-session
-    at: ISO-8601 timestamp
+    at: ISO-8601 timestamp read from the environment, never invented
     evidence: durable link, commit, or conversation reference
 ```
 
