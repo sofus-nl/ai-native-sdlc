@@ -45,3 +45,40 @@ Before this change the plugin already ran focused tests and a self-check per tas
 - **Full loop, including per-checkpoint independent review, on all Standard work.** It multiplies review cost by the number of checkpoints, and it contradicts the operating model's statement that independent agents are "not ceremony requirements".
 - **Controlled-only adoption.** Everyday work would get neither a checkpoint list nor a visual gate.
 - **Human approval of every Controlled checkpoint by default.** It adds N interrupts on top of the existing gates. A single stop after checkpoint 1 captures Helix's early scrutiny.
+
+## ADR-002: Evaluate TypeSafe Jev for routing; not adopted (2026-09-28)
+
+### Status
+
+Accepted
+
+### Context
+
+TypeSafe's Jev (`typesafe/jev-1.13` on OpenRouter) is a non-generative decision model built on the ["System One" pattern](https://docs.typesafe.ai/concepts/how-to-build-with-system-one). It takes JSON state and typed questions and returns typed answers with calibrated probabilities. A companion product, Jev Router, picks the LLM and reasoning effort for each request. We asked whether either could improve the plugin, starting with the router skill.
+
+Facts we checked on 2026-09-28:
+
+- Jev launched in early access on 2026-09-15 and is hosted only.
+- Its context window is 32k tokens, text only.
+- We found no data-retention or privacy terms.
+- Jev Router does not disclose its candidate models or its routing logic.
+- The published benchmarks are run by the vendor.
+
+### Decision
+
+Do not call Jev or Jev Router from the plugin. Adopt one System One idea: when an answer is uncertain, escalate it instead of guessing. The router now says that a risk signal the agent cannot rule out after reading the relevant code counts as present. The agent therefore can no longer guess its way down to the Fast lane.
+
+Reasons:
+
+1. **Routing costs little today.** The host model already holds the request and the repository context when it chooses a lane. A Jev call would save almost nothing, and it would add a network round trip.
+2. **It breaks the product shape.** The plugin is Markdown skills with no runtime. Calling Jev would need a script, an OpenRouter key for every user, and network access from every host.
+3. **Data would leave the machine.** Request and repository content would go to an early-access third party with no published retention terms. `model-selection.md` forbids cross-provider execution without an authorized runtime and data scope.
+4. **Jev Router cannot meet our own qualification rule.** That rule needs the exact model and version, paired evidence, and a baseline. The router's model pool is undisclosed.
+
+The rest of System One is already in place: deterministic rules stay deterministic, lanes are chosen from atomic risk signals with the highest signal winning, and the human owns judgment gates.
+
+### Revisit when
+
+- Jev publishes retention terms and independent evaluations exist.
+- The plugin gains an optional runtime.
+- A product built with the plugin needs high-volume narrow classification. That is Jev's real fit, and there Jev would be a product dependency, not a plugin dependency.
