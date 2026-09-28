@@ -63,7 +63,7 @@ CASES = {
 
 
 def snapshot(root):
-    return {str(p.relative_to(root)).replace('\\', '/'): p.read_text(encoding='utf-8')
+    return {str(p.relative_to(root)).replace('\\', '/'): p.read_text(encoding='utf-8', errors='replace')
             for p in root.rglob('*') if p.is_file() and '__pycache__' not in p.parts}
 
 
@@ -87,8 +87,10 @@ def check(root):
             if name == 'payment':
                 required += ('intent.md',)
             if not any(all((p / f).is_file() for f in required)
+                       and 'checkpoint' in (p / 'plan.md').read_text(encoding='utf-8').lower()
+                       and 'reference oracle' in (p / 'spec.md').read_text(encoding='utf-8').lower()
                        for p in changes.glob('*') if p.is_dir()):
-                failures.append(f'{name}: missing lifecycle artifacts')
+                failures.append(f'{name}: missing lifecycle artifacts, checkpoint list, or Reference oracle')
         if name == 'feature':
             source = actual.get('labels.py', '')
             if BASE not in source or 'def labels(' not in source:

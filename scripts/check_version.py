@@ -25,9 +25,9 @@ def validate(claude, codex, marketplace, changelog):
         raise ValueError('Invalid SemVer version')
     if len(set(versions)) != 1:
         raise ValueError('Plugin versions differ')
-    headings = re.findall(r'^## (\S+) - (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})$',
-                          changelog, re.MULTILINE)
-    if not headings or headings[0][0] != versions[0]:
+    first = next((line for line in changelog.splitlines() if line.startswith('## ')), '')
+    heading = re.fullmatch(r'## (\S+) - (Unreleased|[0-9]{4}-[0-9]{2}-[0-9]{2})', first)
+    if not heading or heading.group(1) != versions[0]:
         raise ValueError('First versioned changelog entry must match the manifests')
     return versions[0]
 
@@ -47,6 +47,7 @@ def self_test():
         ({**manifest, 'version': '0.4.0'}, marketplace, changelog),
         (manifest, {'plugins': [{**manifest, 'version': '0.4.0'}]}, changelog),
         (manifest, marketplace, '## 0.4.0 - 2026-09-05\n'),
+        (manifest, marketplace, '## 0.6.0 - TBD\n## 0.5.0 - Unreleased\n'),
         ({**manifest, 'version': None}, marketplace, changelog),
     ):
         try:

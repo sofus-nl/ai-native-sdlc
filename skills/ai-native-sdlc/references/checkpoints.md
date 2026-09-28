@@ -6,13 +6,13 @@ Read when planning or performing Git checkpoints. This policy does not grant per
 
 Follow repository instructions and the user's delivery boundary. Identify the working branch, remote/destination, ownership, required checks, and push/PR-triggered workflows. Reuse existing branch and review conventions; prefer short-lived work over long-lived isolation, but do not invent a feature-branch requirement where authorized trunk work is the established practice.
 
-Record useful checkpoints alongside existing plan tasks: coherent change, focused proof, and permitted destination. Small work may need only one commit. Do not create a separate checkpoint system, timer, commit quota, or lifecycle files for Fast work. Existing authorization can cover repeated checkpoints within its stated scope; ask only when authority or effects would expand.
+Record commit and share points on the plan's existing checkpoints: coherent change, focused proof, and permitted destination. A plan checkpoint whose gates passed is the natural commit point. For Fast work, the single stated change is the checkpoint. Small work may need only one commit. Do not create a separate checkpoint system, timer, commit quota, or lifecycle files for Fast work. Existing authorization can cover repeated commits and pushes within its stated scope; ask only when authority or effects would expand.
 
 ## Commit a coherent increment
 
-- After the task diff meets its acceptance criteria and focused checks pass, commit the logical increment when authorized. Include the related tests and necessary documentation; keep unrelated changes separate. Do not wait for an entire multi-step feature if an independently useful increment is ready.
+- After the checkpoint diff meets its acceptance criteria and focused checks pass, commit the logical increment when authorized. Include the related tests and necessary documentation; keep unrelated changes separate. Do not wait for an entire multi-step feature if an independently useful increment is ready.
 - Inspect status, the staged diff, and the relevant working-tree diff. Stage only intended paths or hunks; exclude secrets and unrelated user work. Verify the staged snapshot is the change tested: unstaged dependencies or a mixed index can make a green working-tree test misleading. If evidence does not cover the commit, resolve the staging boundary or test that snapshot before claiming it passed.
-- Use repository commit-message conventions and explain intent. Preserve published/shared history; do not amend another contributor's work. A needed, authorized local recovery checkpoint may preserve incomplete work, but label its failures and missing proof; it is not a verified increment or merge-ready result.
+- Use repository commit-message conventions and explain intent. Preserve published/shared history; do not amend another contributor's work. A needed, authorized local recovery commit may preserve incomplete work, but label its failures and missing proof; it is not a verified increment or merge-ready result.
 
 ## Push for sharing or validation
 

@@ -14,7 +14,7 @@ Bind the review to the exact reviewed revision or diff. Any later code change in
 
 ## Passes
 
-Use a fresh-context reviewer when available, following `../ai-native-sdlc/references/economy.md`; otherwise separate the passes explicitly without claiming independent review. One reviewer may cover all passes; add specialists when distinct risk or policy requires them. Supply the authoritative inputs, not the author's persuasive account of correctness. A new agent alone does not guarantee fresh context or unbiased judgment.
+Use a fresh-context reviewer when available, following `../ai-native-sdlc/references/economy.md`; otherwise separate the passes explicitly without claiming independent review. One reviewer may cover all passes; add specialists when distinct risk or policy requires them. Supply the authoritative inputs, not the author's persuasive account of correctness. A new agent alone does not guarantee fresh context or unbiased judgment. For Controlled work, use two context-isolated reviewers that each check against the repository's documented architecture and policy standards; both must approve. Prefer a different model family for the second reviewer when the host offers one. With only one agent available for Controlled work, the human reviews each checkpoint and the full diff, and no `checkpoint` approval pre-authorizes later ones.
 
 1. **Outcome pass:** Map every acceptance ID and explicit boundary to the diff and proof. Find omissions, unrequested behavior, plan drift, and incompatible interfaces.
 2. **Engineering pass:** Inspect changed code in context for correctness, edge cases, concurrency, data loss, security, privacy, operability, and maintainability. Trace important changed functions through callers.
@@ -31,6 +31,10 @@ For each finding include severity, exact location, consequence, evidence, and th
 - **Important:** likely defect, unmet acceptance criterion, material regression, or missing necessary test.
 - **Minor:** real but non-blocking maintainability or clarity cost.
 
-Verify every finding against the code. Discard false positives. Stop and report unresolved Critical or Important findings, then route authorized fixes to `ai-native-build`. After a fix, run a fresh review of the affected pass. Defer only with an owner and reason; user decisions stay decisions.
+Verify every finding against the code. Discard false positives. Stop and report unresolved Critical or Important findings, then route authorized fixes to `ai-native-build` (in checkpoint mode, return them to the running build loop). After a fix, run a fresh review of the affected pass. Defer only with an owner and reason; user decisions stay decisions.
 
-The reviewer does not edit the reviewed change. The authoring agent may prepare fixes but never approve its own Controlled-lane change. When no blocking findings remain, invoke `ai-native-verify`.
+The reviewer does not edit the reviewed change. The authoring agent may prepare fixes but never approve its own Controlled-lane change. When no blocking findings remain, invoke `ai-native-verify`, except in checkpoint mode.
+
+## Checkpoint mode
+
+For Controlled work, `ai-native-build` runs this review after each checkpoint. Use checkpoint mode for Controlled work whenever `state.md` shows `status: building` or `status: blocked`, whoever invoked this skill. Scope it to that checkpoint's diff and acceptance IDs, and return control to `ai-native-build` instead of invoking `ai-native-verify`. After the last checkpoint, build requests a full review of the complete diff.

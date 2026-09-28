@@ -2,6 +2,12 @@
 
 ## 0.5.0 - Unreleased
 
+- Adopted a Helix-informed checkpoint convergence loop for Standard and Controlled work: `plan.md` holds an ordered checkpoint list approved at the plan gate, and each checkpoint passes behavior, visual (UI only), and self-review gates before the next. Plan checkpoints double as the Git commit points in `checkpoints.md`.
+- Controlled work adds review checkpoint mode with two context-isolated reviewers, a separate test author when available, and a human stop after checkpoint 1; a recorded `checkpoint` approval covers a stated scope.
+- Added a "Reference oracle" field to `spec.md`, the `checkpoint` approval gate, and human feedback in `state.md`. Verify step 5 is now a matched-state visual gate with severity, location, and INVALID recapture. Economy orders gates cheapest first.
+- Hardened checkpoint approvals: single-agent Controlled work needs a human per checkpoint, `checkpoint` approvals name the covered checkpoints and plan revision, pending approvals block resume, visual recapture is capped, test-author checks are protected, build resumes at the checkpoint in `next_action`, and the visual gate handles written oracles. Behavior-check rubric and filesystem checks now require the checkpoint list and Reference oracle, and the feature case scripts one plan-approval turn.
+- Fixed the behavior checker crashing on non-UTF-8 files instead of reporting a failure, and the version checker validating an older changelog heading when the top heading was malformed; CI now also runs the checker regression test.
+- Fixed lane consistency: plan stops without required artifacts or plan approval, shape writes `intent.md` for Standard work only when ambiguous, and Fast excludes cross-service effects in the operating model.
 - Added scoped commit/push checkpoints to planning, building, and shipping; separated branch sharing from integration/release gates and preserved staged-snapshot, outgoing-history, and authorization checks.
 - Integrated SemVer 2.0.0 into project release planning, verification, and shipping through an on-demand reference, preserving existing repository policy and publication authority.
 - Declared the plugin compatibility contract and SemVer release policy; added automated version-format, manifest-alignment, and changelog checks.

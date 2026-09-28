@@ -3,6 +3,7 @@
 This plugin uses original wording and implementation-neutral workflow ideas informed by:
 
 - Anthropic, [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook), 2026.
+- Shopify Engineering, [Helix](https://shopify.engineering/helix), 2026.
 - Jesse Vincent and contributors, [Superpowers](https://github.com/obra/superpowers), MIT License.
 - Open GSD contributors, [GSD Core](https://github.com/open-gsd/gsd-core), MIT License.
 - BMad Code LLC and contributors, [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), MIT License; BMAD names and marks remain their owners' property.

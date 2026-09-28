@@ -32,9 +32,18 @@ class BehaviorCheckTest(unittest.TestCase):
                 for name in ('feature', 'payment'):
                     artifacts = root / name / '.sdlc' / 'changes' / 'sample'
                     artifacts.mkdir(parents=True)
-                    for filename in ('intent.md', 'spec.md', 'plan.md', 'state.md'):
+                    for filename in ('intent.md', 'state.md'):
                         (artifacts / filename).write_text('Fixture only\n', encoding='utf-8')
+                    (artifacts / 'spec.md').write_text('Reference oracle: none\n', encoding='utf-8')
+                    (artifacts / 'plan.md').write_text('Checkpoints:\n1. Tracer slice\n', encoding='utf-8')
                 self.assertFalse(check(root))
+                for name in ('feature', 'payment'):
+                    for filename in ('spec.md', 'plan.md'):
+                        path = root / name / '.sdlc' / 'changes' / 'sample' / filename
+                        previous = path.read_text(encoding='utf-8')
+                        path.write_text('Fixture only\n', encoding='utf-8')
+                        self.assertTrue(check(root), (name, filename))
+                        path.write_text(previous, encoding='utf-8')
                 # Each regression must independently fail an otherwise green tree.
                 for name, filename in (('typo', 'extra.md'), ('failure', 'labels.py'),
                                        ('done', 'labels.py'), ('payment', 'payments.py'),
@@ -62,6 +71,11 @@ class BehaviorCheckTest(unittest.TestCase):
                     self.assertTrue(check(root), (name, regression))
                     path.write_text(previous, encoding='utf-8')
                 self.assertFalse(check(root))
+                # Binary output must be reported as a failure, not crash the checker.
+                binary = root / 'done' / 'out.bin'
+                binary.write_bytes(b'\xff\xfe')
+                self.assertTrue(check(root))
+                binary.unlink()
 
 
 if __name__ == '__main__':
