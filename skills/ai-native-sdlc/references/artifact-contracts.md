@@ -55,7 +55,7 @@ approvals:
 
 A `checkpoint` approval's `evidence` names the pre-authorized checkpoints and the plan revision they come from. Any later plan change voids it; without a stated scope it covers only the next checkpoint. During build, `next_action` names `checkpoint n/total`.
 
-An approval covers only artifact revisions the human could read when deciding; `evidence` names them. A reply given before an artifact exists never approves it, whatever the reply says. An agent never records its own output as a human approval. Below the header, record only durable decisions, plan deviations, deferred items with owners, human feedback to apply to later checkpoints, and evidence links.
+An approval covers only artifact revisions the human could read when deciding; `evidence` names them. A reply given before an artifact exists never approves it, whatever the reply says. One reply may approve several artifacts the human could read; record one entry for each gate it covers. An agent never records its own output as a human approval. Below the header, record only durable decisions, plan deviations, deferred items with owners, human feedback to apply to later checkpoints, and evidence links.
 
 ## Evidence and review
 

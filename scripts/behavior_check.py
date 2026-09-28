@@ -1,6 +1,7 @@
 """Create disposable behavior fixtures or check their observable outcomes (stdlib only)."""
 
 import argparse
+import re
 from pathlib import Path
 
 
@@ -105,6 +106,11 @@ def check(root):
             source = actual.get('payments.py', '')
             if 'def charge(' not in source or 'def refund(' not in source or 'ValueError' not in source:
                 failures.append('payment-build: validation missing or functions removed')
+            states = ' '.join(p.read_text(encoding='utf-8', errors='replace')
+                              for p in (folder / '.sdlc' / 'changes').glob('*/state.md'))
+            for gate in ('intent', 'design', 'plan', 'checkpoint'):
+                if not re.search(r'gate:\s*["\']?' + gate + r'\b', states):
+                    failures.append(f'payment-build: no recorded {gate} approval')
         if name in ('shared', 'stale'):
             editable = 'settings.py' if name == 'shared' else 'labels.py'
             for filename, content in initial.items():

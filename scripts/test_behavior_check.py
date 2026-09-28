@@ -39,7 +39,15 @@ class BehaviorCheckTest(unittest.TestCase):
                         (artifacts / filename).write_text('Fixture only\n', encoding='utf-8')
                     (artifacts / 'spec.md').write_text('Reference oracle: none\n', encoding='utf-8')
                     (artifacts / 'plan.md').write_text('Checkpoints:\n1. Tracer slice\n', encoding='utf-8')
+                gates = root / 'payment-build' / '.sdlc' / 'changes' / 'sample' / 'state.md'
+                gates.write_text(''.join(f'  - gate: {g}\n' for g in ('intent', 'design', 'plan', 'checkpoint')),
+                                 encoding='utf-8')
                 self.assertFalse(check(root))
+                # payment-build must record every Controlled approval gate.
+                previous = gates.read_text(encoding='utf-8')
+                gates.write_text(previous.replace('gate: design', 'gate: review'), encoding='utf-8')
+                self.assertTrue(check(root))
+                gates.write_text(previous, encoding='utf-8')
                 for name in ('feature', 'payment', 'payment-build'):
                     for filename in ('spec.md', 'plan.md'):
                         path = root / name / '.sdlc' / 'changes' / 'sample' / filename
