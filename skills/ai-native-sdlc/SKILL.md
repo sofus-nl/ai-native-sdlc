@@ -29,7 +29,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 
 ## Invariants
 
-- The user owns judgment gates and irreversible actions. An agent may prepare evidence but never self-approve. Authorization to implement does not approve intent, plan, or checkpoints: Controlled gates need an in-session human decision on the named artifact.
+- The user owns judgment gates and irreversible actions. An agent may prepare evidence but never self-approve. Authorization to implement does not approve intent, plan, or checkpoints: Controlled gates need an in-session human decision on the named artifact, given after that artifact exists.
 - Trace every artifact to the requested outcome. Tests passing does not prove the right thing was built.
 - Keep one source of truth per artifact. Cross-link external tickets or documents instead of silently duplicating authority.
 - Fix the earliest incorrect layer: intent, specification, plan, code, test, release, or control band.

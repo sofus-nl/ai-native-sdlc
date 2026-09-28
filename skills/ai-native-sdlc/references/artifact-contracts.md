@@ -49,13 +49,13 @@ approvals:
   - gate: intent|design|plan|checkpoint|review|release
     decision: accepted|rejected
     by: human identity or human-confirmed-in-session
-    at: ISO-8601 timestamp read from the environment, never invented
+    at: ISO-8601 timestamp from a clock command run when recording, never estimated or invented
     evidence: durable link, commit, or conversation reference
 ```
 
 A `checkpoint` approval's `evidence` names the pre-authorized checkpoints and the plan revision they come from. Any later plan change voids it; without a stated scope it covers only the next checkpoint. During build, `next_action` names `checkpoint n/total`.
 
-An agent never records its own output as a human approval. Below the header, record only durable decisions, plan deviations, deferred items with owners, human feedback to apply to later checkpoints, and evidence links.
+An approval covers only artifact revisions the human could read when deciding; `evidence` names them. A reply given before an artifact exists never approves it, whatever the reply says. An agent never records its own output as a human approval. Below the header, record only durable decisions, plan deviations, deferred items with owners, human feedback to apply to later checkpoints, and evidence links.
 
 ## Evidence and review
 
