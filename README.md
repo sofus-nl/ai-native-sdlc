@@ -90,6 +90,8 @@ Use ai-native-sdlc to resume the change recorded in .sdlc/changes/csv-export/sta
 | Standard | Bounded features and ordinary bugs | Specification, plan, state, review, and fresh verification |
 | Controlled | Security, privacy, payments, migrations, production, destructive changes, or cross-service effects | Explicit intent and human gates, independent review, and recovery evidence |
 
+Standard and Controlled work proceed through an ordered checkpoint list approved at the plan gate, each checkpoint passing its gates before the next; Controlled adds two context-isolated reviewers per checkpoint.
+
 Standard and Controlled work keep durable artifacts under `.sdlc/changes/<slug>/`. Existing state identifies the next action, so work can resume without replaying the whole conversation. Only create the artifacts the chosen lane needs.
 
 The agent follows repository instructions and the user's authorization. The skills do not grant permission to commit, publish, deploy, or change external systems. They are instructions, not a sandbox or an enforced policy engine.
@@ -113,6 +115,8 @@ For the software you build with this plugin, planning, verification, and shippin
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
 - **You installed an earlier local version:** it may coexist under `ai-native-sdlc@personal` in Codex. Keep one active copy if duplicate skills appear.
 - **Too much ceremony:** state the actual scope and ask the router to explain its lane choice. A genuinely low-risk edit should use Fast.
+- **Controlled gates skipped on `claude-sonnet-5-5`:** in 0.5.0 behavior checks, this model did not reliably follow Controlled gates such as the separate test author, final verification, and the specification's Reference oracle. It is not yet qualified for Controlled work. Use `claude-sonnet-5` or another qualified model, and confirm that `state.md` records intent, design, and plan approvals before any code changes.
+- **Writes denied with "State the lane" or "records these approvals":** in Claude Code, the plugin's guard hook (`hooks/edit_guard.py`, needs `python` on PATH) blocks file changes until the lane is stated and `state.md` records the required approvals. Ask the router to state the lane, or record the approval you gave. The guard is not available on Codex.
 - **Other workflow plugins compete:** invoke this plugin explicitly and disable overlapping plugins if their instructions conflict.
 
 ## Development and contributions

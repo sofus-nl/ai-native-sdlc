@@ -27,6 +27,7 @@ Never simplify away trust-boundary validation, security, privacy, accessibility,
 - Do not reread unchanged material. Put durable decisions and the next action in `state.md`, not a conversation transcript.
 - Keep tool output to the decisive failure, counts, and affected locations when full output is not required for correctness.
 - Stop exploration when the next decision is supported. Stop implementation when acceptance passes.
+- Order gates cheapest first; iterate on headless behavior checks before screenshots or reviewer passes.
 
 ## Delegation
 

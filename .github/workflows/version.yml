@@ -12,3 +12,5 @@ jobs:
           python-version: '3.12'
       - run: python scripts/check_version.py --self-test
       - run: python scripts/check_version.py
+      - run: python scripts/test_behavior_check.py
+      - run: python scripts/test_edit_guard.py

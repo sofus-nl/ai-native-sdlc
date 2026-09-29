@@ -15,10 +15,10 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 4. For material product choices, offer two or three genuinely different approaches with tradeoffs and an honest recommendation. For an obvious bounded change, state the single approach.
 5. Challenge unsupported premises. Preserve disagreement and the deciding evidence.
 6. Choose the lane using `../ai-native-sdlc/references/operating-model.md`.
-7. For Standard or Controlled work, write `intent.md` using `../ai-native-sdlc/references/artifact-contracts.md`. Do not mark it accepted until the authorized human accepts it.
-8. After intent acceptance, produce `spec.md`. Trace every requirement to the intent, assign acceptance IDs, describe failure behavior and trust boundaries, and flag policy conflicts.
+7. For Controlled work, or Standard work whose request is materially ambiguous, write `intent.md` using `../ai-native-sdlc/references/artifact-contracts.md`. Do not mark it accepted until the authorized human accepts it.
+8. After intent acceptance, or directly for clear Standard work, produce `spec.md`. Trace every requirement to the intent, assign acceptance IDs, describe failure behavior and trust boundaries, and flag policy conflicts.
 9. Self-review for placeholders, contradictions, unowned decisions, scope creep, and acceptance criteria that cannot be tested or observed.
-10. Stop at the design gate when human judgment is required. Otherwise hand the accepted spec to `ai-native-plan`.
+10. Stop at the design gate when human judgment is required. Controlled work always needs a recorded `design` approval of `spec.md`, even when the same reply approves the plan. Otherwise hand the accepted spec to `ai-native-plan`.
 
 ## Boundaries
 

@@ -6,7 +6,7 @@ Use the highest applicable risk signal. Do not average risks downward.
 
 ### Fast
 
-Use for a small, reversible, well-specified edit with no security, privacy, money, migration, production, or destructive effect.
+Use for a small, reversible, well-specified edit with no security, privacy, money, migration, production, destructive, or cross-service effect.
 
 - No lifecycle files are required.
 - Inspect the real path, state a short plan, make the smallest change, review the diff, and run the narrowest meaningful proof.
@@ -20,6 +20,7 @@ Use for ordinary bugs and bounded features.
 - Create `plan.md` and `state.md` before implementation.
 - Require focused tests, diff review, and fresh verification.
 - Use isolated work and independent agents when they reduce collision or confirmation bias; they are not ceremony requirements.
+- The human approves an ordered checkpoint list at the plan gate. Each checkpoint passes behavior, visual (UI only), and self-review gates before the next starts; independent review runs once on the full diff.
 
 ### Controlled
 
@@ -27,6 +28,7 @@ Use when work touches authentication, authorization, secrets, privacy, payments,
 
 - Require accepted `intent.md`, `spec.md`, `plan.md`, named human gates, rollback or recovery proof, isolated work, and independent review.
 - Separate the author, reviewer, and approver roles when the host supports it.
+- Each checkpoint also passes review by two context-isolated reviewers, uses a separate test author when the host supports it, and stops for human approval after checkpoint 1; later checkpoints follow the recorded `checkpoint` approval.
 - Production stops at an explicit human authorization even if every automated check is green.
 
 ## Gates
@@ -34,10 +36,12 @@ Use when work touches authentication, authorization, secrets, privacy, payments,
 1. **Intent:** Is the desired outcome and boundary correct?
 2. **Design:** Do requirements, constraints, and acceptance checks resolve the intent?
 3. **Plan:** Are exact change points, dependency order, risks, and proof known?
-4. **Build:** Does each task produce a bounded, testable result without scope drift?
+4. **Build:** Does each checkpoint produce a bounded, testable result without scope drift?
 5. **Review:** Does the diff match intent and plan, and is it technically safe?
 6. **Verify:** Do fresh commands or observations prove the claims?
 7. **Release:** Are approvals, rollback, and post-release checks ready?
 8. **Operate:** Are deterministic signals inside their control bands, and do incidents feed the right layer?
+
+Build reuses the visual-gate step of `ai-native-verify` per checkpoint; the full review and a full `ai-native-verify` run happen once on the complete diff. A pre-authorized checkpoint run never relaxes a gate.
 
 At a failed gate, repair that layer and repeat downstream gates. Do not patch evidence to make a gate green.

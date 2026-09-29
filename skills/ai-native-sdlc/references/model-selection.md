@@ -1,6 +1,6 @@
 # Model selection
 
-Read when selecting a worker model, considering a model change, or evaluating model cost. This is a selection policy, not an automatic router or a qualified model catalog.
+Read when selecting a worker model, considering a model change, evaluating model cost, or assessing a model qualification claim. This is a selection policy, not an automatic router or a qualified model catalog.
 
 ## Select
 
@@ -15,9 +15,9 @@ Read when selecting a worker model, considering a model change, or evaluating mo
 - Escalate for observed capability shortfalls or newly discovered complexity. Missing credentials, unavailable tools, and broken environments require resolving or reporting the blocker, not automatically a stronger model.
 - Before another attempt, name the failed criterion and why the next configuration can address it. Preserve authoritative requirements, evidence, and the current diff through the existing delegation handoff. If no justified next attempt exists, stop and report the limitation; do not cycle through model names.
 
-## Qualify cheaper defaults
+## Qualify models and cheaper defaults
 
-Use an existing evaluation or evidence record, not a new runtime database. Record task class; exact model/version and effort; host/tools/context; baseline; acceptance and review criteria; dated evidence; paired failures; and complete cost with its billing basis. Fast work stays inline; do not create lifecycle files just to record a selection.
+Use an existing evaluation or evidence record, not a new runtime database. For any model qualification claim, including a cheaper default, require task class; exact model/version and effort; host/tools/context; baseline; acceptance and review criteria; dated evidence; paired failures; and complete cost with its billing basis. Fast work stays inline; do not create lifecycle files just to record a selection.
 
 Before enabling a cheaper default, compare exact configurations on held-out representative tasks with repeated runs and equal tools, permissions, acceptance, and final verification. Examine baseline-success/candidate-failure cases, critical defects, and each task class separately from aggregate scores. Choose sample size for the required assurance; smoke fixtures do not qualify models. Report uncertainty and failed attempts, not only successful calls. No quality-loss tolerance is introduced by this policy.
 

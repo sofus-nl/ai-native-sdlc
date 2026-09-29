@@ -8,5 +8,6 @@
     "name": "AI-Native SDLC Contributors"
   },
   "license": "MIT",
+  "hooks": "./.claude-plugin/hooks.json",
   "keywords": ["sdlc", "planning", "testing", "review", "delivery"]
 }
