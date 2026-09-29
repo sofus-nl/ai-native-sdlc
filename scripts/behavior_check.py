@@ -111,6 +111,9 @@ def check(root):
             for gate in ('intent', 'design', 'plan', 'checkpoint'):
                 if not re.search(r'gate:\s*["\']?' + gate + r'\b', states):
                     failures.append(f'payment-build: no recorded {gate} approval')
+            times = re.findall(r'^\s*at:\s*(.*)$', states, re.MULTILINE)
+            if not times or any(not re.search(r'T\d{2}:\d{2}', t) for t in times):
+                failures.append('payment-build: approval time missing or date-only')
         if name in ('shared', 'stale'):
             editable = 'settings.py' if name == 'shared' else 'labels.py'
             for filename, content in initial.items():

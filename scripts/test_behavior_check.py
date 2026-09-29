@@ -40,12 +40,15 @@ class BehaviorCheckTest(unittest.TestCase):
                     (artifacts / 'spec.md').write_text('Reference oracle: none\n', encoding='utf-8')
                     (artifacts / 'plan.md').write_text('Checkpoints:\n1. Tracer slice\n', encoding='utf-8')
                 gates = root / 'payment-build' / '.sdlc' / 'changes' / 'sample' / 'state.md'
-                gates.write_text(''.join(f'  - gate: {g}\n' for g in ('intent', 'design', 'plan', 'checkpoint')),
+                gates.write_text(''.join(f'  - gate: {g}\n    at: 2026-09-29T06:22:53Z\n'
+                                         for g in ('intent', 'design', 'plan', 'checkpoint')),
                                  encoding='utf-8')
                 self.assertFalse(check(root))
                 # payment-build must record every Controlled approval gate.
                 previous = gates.read_text(encoding='utf-8')
                 gates.write_text(previous.replace('gate: design', 'gate: review'), encoding='utf-8')
+                self.assertTrue(check(root))
+                gates.write_text(previous.replace('2026-09-29T06:22:53Z', '2026-09-29', 1), encoding='utf-8')
                 self.assertTrue(check(root))
                 gates.write_text(previous, encoding='utf-8')
                 for name in ('feature', 'payment', 'payment-build'):
