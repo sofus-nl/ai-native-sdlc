@@ -82,3 +82,37 @@ The rest of System One is already in place: deterministic rules stay determinist
 - Jev publishes retention terms and independent evaluations exist.
 - The plugin gains an optional runtime.
 - A product built with the plugin needs high-volume narrow classification. That is Jev's real fit, and there Jev would be a product dependency, not a plugin dependency.
+
+## ADR-003: Enforce Standard and Controlled gates with a Claude Code hook (2026-09-29)
+
+### Status
+
+Proposed. It lives on the `trial/controlled-edit-guard` branch and is not merged.
+
+### Context
+
+On `claude-sonnet-5-5`, which the `sonnet` alias in Claude Code resolved to from 2026-09-29, the plugin's instructions did not reliably hold. In the `payment-build` behavior case, 4 of 4 early runs failed: some built a payment change with no lifecycle files ("the task was fully specified and small"), and others dispatched one reviewer agent instead of the review skill and never verified. Rewording the router, plan, and build skills raised compliance to about 1 run in 2, and one wording attempt made both models worse. Removing the user's global `CLAUDE.md` did not change the result, so the model itself is the cause. More wording rounds cost about $10 each and give no guarantee.
+
+### Decision
+
+Ship `hooks/edit_guard.py` as a Claude Code plugin hook, registered from `.claude-plugin/hooks.json` through the Claude manifest. It runs only in a session that has invoked an `ai-native-sdlc` skill.
+
+- **Before a file write** (Edit, Write, MultiEdit, NotebookEdit, or a shell command that writes): deny when the lane has not been stated. Deny for Standard work until `state.md` records a `plan` approval, and for Controlled work until it records `intent`, `design`, and `plan` approvals. Writes under `.sdlc/` are always allowed. Fast work is never blocked.
+- **At the end of a turn:** for Standard or Controlled work at `status: building` or `reviewing`, block the stop once and tell the agent to run review and verification, or to set `status: blocked` if it needs the human. A second stop passes, so the agent can always hand back.
+- **Failure mode:** if `python` is missing or the hook errors, the guard is inactive and work is not blocked.
+
+The hook is registered from `.claude-plugin/` and not from the default `hooks/hooks.json`, because Codex loads that default path and `${CLAUDE_PLUGIN_ROOT}` may be unset there. Codex has no equivalent guard.
+
+### Consequences
+
+- In trials, all 8 guarded `claude-sonnet-5-5` runs recorded the approvals before any code, and the 4 runs made after the end-of-turn check all reached `verified`. Small tasks kept their lanes: `typo` created no lifecycle files and `feature` stopped for plan approval, on both models.
+- The guard does not enforce a separate test author or two reviewers. In the last 4 runs on `claude-sonnet-5-5`, 2 skipped the separate test author. That gap stays instruction-only.
+- The plugin gains its first non-Markdown file, and Claude Code users need `python` on PATH for the guard to work. It is one file, about 100 lines, with a unit test.
+- Detecting writes made through shell commands is a heuristic. A command that writes through a program the guard does not list is not caught.
+- The guard reads Claude Code's transcript format, so it does nothing on Codex.
+
+### Alternatives rejected
+
+- **More instruction rewording.** Costly, and compliance stays probabilistic.
+- **Marking `claude-sonnet-5-5` unsupported and stopping.** The README label already does this, but it leaves default-Sonnet users without protection.
+- **A model-judged hook** that asks a small model whether an edit is high-risk. It cannot read `state.md` from a yes/no prompt, and the deterministic check already covers the failures seen.
