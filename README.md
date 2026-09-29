@@ -115,6 +115,7 @@ For the software you build with this plugin, planning, verification, and shippin
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
 - **You installed an earlier local version:** it may coexist under `ai-native-sdlc@personal` in Codex. Keep one active copy if duplicate skills appear.
 - **Too much ceremony:** state the actual scope and ask the router to explain its lane choice. A genuinely low-risk edit should use Fast.
+- **Controlled gates skipped on `claude-sonnet-5-5`:** in 0.5.0 behavior checks, this model did not reliably follow Controlled gates such as the separate test author, final verification, and the specification's Reference oracle. It is not yet qualified for Controlled work. Use `claude-sonnet-5` or another qualified model, and confirm that `state.md` records intent, design, and plan approvals before any code changes.
 - **Other workflow plugins compete:** invoke this plugin explicitly and disable overlapping plugins if their instructions conflict.
 
 ## Development and contributions
