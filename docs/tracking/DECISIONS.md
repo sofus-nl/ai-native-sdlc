@@ -87,7 +87,7 @@ The rest of System One is already in place: deterministic rules stay determinist
 
 ### Status
 
-Proposed. It lives on the `trial/controlled-edit-guard` branch and is not merged.
+Accepted (2026-09-29). Trialed on `claude-sonnet-5-5`; also checked on Codex, where it stays inactive.
 
 ### Context
 
