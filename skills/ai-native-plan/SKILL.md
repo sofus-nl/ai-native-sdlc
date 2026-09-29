@@ -6,7 +6,7 @@ description: Convert accepted software intent or a specification into a codebase
 # Plan from the code outward
 
 When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the lane and invariants.
-Stop when the selected lane's required source artifact or approval is absent, except that a plan-only request may draft `plan.md` on draft intent and spec; mark nothing accepted and record no approval. Standard and Controlled plans need a `spec.md` with acceptance IDs and a Reference oracle; when it is missing, invoke `ai-native-shape` first.
+Stop when the selected lane's required source artifact or approval is absent, except that a plan-only request may draft `plan.md` on draft intent and spec; mark nothing accepted and record no approval. Standard and Controlled plans need a `spec.md` with acceptance IDs and a Reference oracle, and Controlled plans also need recorded `intent` and `design` approvals; when any is missing, invoke `ai-native-shape` first instead of writing them here.
 
 ## Workflow
 
