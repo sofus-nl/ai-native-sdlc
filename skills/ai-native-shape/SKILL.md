@@ -16,7 +16,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 5. Challenge unsupported premises. Preserve disagreement and the deciding evidence.
 6. Choose the lane using `../ai-native-sdlc/references/operating-model.md`.
 7. For Controlled work, or Standard work whose request is materially ambiguous, write `intent.md` using `../ai-native-sdlc/references/artifact-contracts.md`. Do not mark it accepted until the authorized human accepts it.
-8. After intent acceptance, or directly for clear Standard work, produce `spec.md`. Trace every requirement to the intent, assign acceptance IDs, describe failure behavior and trust boundaries, and flag policy conflicts.
+8. After intent acceptance, directly for clear Standard work, or as an unaccepted draft for a plan-only request, produce `spec.md`. Trace every requirement to the intent, assign acceptance IDs, describe failure behavior and trust boundaries, and flag policy conflicts.
 9. Self-review for placeholders, contradictions, unowned decisions, scope creep, and acceptance criteria that cannot be tested or observed.
 10. Stop at the design gate when human judgment is required. Controlled work always needs a recorded `design` approval of `spec.md`, even when the same reply approves the plan. Otherwise hand the accepted spec to `ai-native-plan`.
 
