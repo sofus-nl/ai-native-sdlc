@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.5.0 - Unreleased
+## 0.5.0 - 2026-10-03
 
+- Verification at release: the full 12-case behavior suite ran on Claude Code (`claude-sonnet-5`) and Codex (`gpt-6-astra`) with independent transcript review, plus targeted re-runs after the final fixes. Known limits: `claude-sonnet-5-5` is not yet qualified for Controlled work; the separate test author is skipped in some Claude Code runs; the guard hook is Claude Code only; on Claude Code, `typo`, `payment`, `model-override`, `qualification`, and `cost-retry` missed parts of the rubric in the last full suite run; the visual gate and workspace marketplace import were not tested.
 - Adopted a Helix-informed checkpoint convergence loop for Standard and Controlled work: `plan.md` holds an ordered checkpoint list approved at the plan gate, and each checkpoint passes behavior, visual (UI only), and self-review gates before the next. Plan checkpoints double as the Git commit points in `checkpoints.md`.
 - Controlled work adds review checkpoint mode with two context-isolated reviewers, a separate test author when available, and a human stop after checkpoint 1; a recorded `checkpoint` approval covers a stated scope.
 - Added a "Reference oracle" field to `spec.md`, the `checkpoint` approval gate, and human feedback in `state.md`. Verify step 5 is now a matched-state visual gate with severity, location, and INVALID recapture. Economy orders gates cheapest first.
