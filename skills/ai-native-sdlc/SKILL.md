@@ -1,6 +1,6 @@
 ---
 name: ai-native-sdlc
-description: Route software work through a risk-sized AI-native lifecycle from intent to operations. Use for end-to-end features, fixes, delivery workflows, or resuming a change with existing SDLC artifacts.
+description: Route software work through a risk-sized AI-native lifecycle from intent to operations. Use for end-to-end features, fixes, delivery workflows, resuming a change with existing SDLC artifacts, and read-only reviews of model selection, model qualification claims, or model cost. Use whenever the user asks to use ai-native-sdlc.
 ---
 
 # AI-Native SDLC
@@ -15,7 +15,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 2. Restate the requested outcome, explicit boundaries, and assumptions. Do not widen authorization.
 3. Choose the lane. Fast means small, reversible, clear, and no security, privacy, money, migration, production, destructive, or cross-service effect. Controlled means any of those risks. Standard covers the middle, including bounded features, ordinary bugs, and any request that asks for a plan or specification. A risk signal you cannot rule out after reading the relevant code counts as present. Size never lowers the lane. Standard and Controlled work edit no code until `state.md` records a `plan` approval (Controlled also needs `intent` and `design` approvals); a small or fully specified task, a request that already authorizes implementation, or a general instruction to avoid extra files does not waive this. Read [operating-model.md](references/operating-model.md) only for Standard, Controlled, or unclear classification.
 4. Use the first sufficient option: skip speculative work, reuse existing code, use the standard library, use a native feature, use an installed dependency, then write minimum new code. Keep small, tightly coupled work local unless applicable instructions require delegation. Read [economy.md](references/economy.md) for Standard or Controlled work, complex context, substantial output, or before delegating.
-5. If `.sdlc/changes/*/state.md` identifies this work, resume its `next_action`; do not restart the lifecycle. For model selection, model qualification claims, or cost comparisons, read [model-selection.md](references/model-selection.md).
+5. If `.sdlc/changes/*/state.md` identifies this work, resume its `next_action`; do not restart the lifecycle. For model selection, model qualification claims, or cost comparisons, read [model-selection.md](references/model-selection.md) before answering, including read-only and Fast work.
 6. For Fast work, stay inline: state the short plan, make the smallest authorized edit, inspect the diff, run focused proof, and report fresh evidence. Use `ai-native-debug` first only when the cause is unknown. Do not create lifecycle files.
 7. For Standard or Controlled work, invoke only the next matching skill through the host's skill mechanism; never do a leaf skill's work from this router:
    - unclear outcome, new product behavior, no `spec.md` yet, or Controlled work without an approved `intent.md` -> `ai-native-shape`; a plan-only request still gets draft `spec.md` and `plan.md`, with nothing marked accepted and the approvals still needed listed

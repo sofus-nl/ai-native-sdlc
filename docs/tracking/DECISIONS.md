@@ -116,3 +116,32 @@ The hook is registered from `.claude-plugin/` and not from the default `hooks/ho
 - **More instruction rewording.** Costly, and compliance stays probabilistic.
 - **Marking `claude-sonnet-5-5` unsupported and stopping.** The README label already does this, but it leaves default-Sonnet users without protection.
 - **A model-judged hook** that asks a small model whether an edit is high-risk. It cannot read `state.md` from a yes/no prompt, and the deterministic check already covers the failures seen.
+
+## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
+
+### Status
+
+Accepted (2026-10-07).
+
+### Context
+
+Specification acceptance criteria, plan steps, evidence, and PR text are approved by humans and executed by agents. The asd-ste100-skill repo offers "80% ASD-STE100" structural rules plus a regex linter. No behavior run or incident on record shows vague wording causing a failure; all recorded failures were gate compliance. The change is preventive.
+
+### Decision
+
+Add clarity rule sets to artifact-contracts.md and economy.md as wording only. No new skill, file, or script. Two rule sets: acceptance criteria state one testable condition each and avoid `should`, `appropriate`, `as needed`, `etc.`, `TBD`, `and/or` (quoted UI copy and code exempt); output budget in economy.md: one action per step in active voice, one term per thing, never upgrade a hedge (`may`, `likely`, `not verified`) to a fact, risky steps marked `WARNING:`/`CAUTION:` with command first and reason second.
+
+### Consequences
+
+Compliance is instruction-only and therefore probabilistic (see ADR-003). No new runtime dependency. Verify and ship already cover limitations and rollback, so they are unchanged.
+
+### Alternatives rejected
+
+- **(a) An agent-run linter script** — an agent in a user's repository cannot reliably resolve the plugin's script path, it would add a Python runtime dependency on Codex, and an agent-invoked check holds no better than wording (ADR-003); an advisory linter was first chosen, then dropped after an independent review.
+- **(b) The ASD-STE100 approved-word dictionary** — domain terms must stay.
+- **(c) Hard word caps of 20/25 words** — precise acceptance criteria need room.
+- **(d) The source repo's diagram, HTML, and video output tiers** — outside an SDLC plugin's scope.
+
+### Revisit when
+
+A behavior transcript shows a vague acceptance criterion or an upgraded hedge passing a gate. Then add a non-blocking check to `hooks/edit_guard.py` on writes to `.sdlc/changes/*/spec.md`.

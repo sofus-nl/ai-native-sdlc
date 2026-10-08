@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1 - 2026-10-08
+
+- Verification: the full 12-case behavior suite ran with independent transcript review on three hosts: Claude Code 2.1.294 with `claude-sonnet-5` and `claude-sonnet-5-5`, and Codex 0.160.1 with `gpt-6.1-sol`. Codex used `gpt-6.1-sol`, not the `gpt-6-astra` used for 0.5.0. Results were 9/12, 12/12, and 12/12. All filesystem and executable acceptance checks passed. Reviewers attributed none of the three `claude-sonnet-5` failures to this release:
+  - `typo` skipped its diff check, a known 0.5.0 limit.
+  - `payment` did not name the human checkpoint-1 approval still needed. An earlier run with the same gap was scored as a pass.
+  - `payment-build` skipped the separate test author and dispatched reviewers directly. The 0.5.0 limit "the separate test author is skipped in some Claude Code runs" still applies.
+- Earlier runs of this release, before the fixes below, scored 10/12, 11/12, and 11/12, and `qualification` failed on every host.
+- The final checklist scoping and the "model cost" wording were checked only on Claude Code. On Codex the scoping check could not run, because Windows cancelled the elevated sandbox helper (error 1223).
+- The acceptance-criteria rule produced no banned terms, but some `payment-build` criteria still bundle several conditions. No run used `WARNING:` or `CAUTION:`, and no run read `economy.md`, so the economy.md rules are untested.
+- Added clarity rules to artifact-contracts.md and economy.md, informed by ASD-STE100 Simplified Technical English via asd-ste100-skill (MIT License). Wording only; no linter or compliance tool. See ADR-004.
+- Fixed the `qualification` behavior case, which failed on every host. The model-selection reference now lists the evidence a model qualification claim needs as a checklist, and an assessment of a model qualification claim reports each item as present or missing. The list is skipped when no one claims a model is qualified, because some runs had attached it to `model-override`. The router now reads that reference before answering any model-selection, qualification, or cost question, including read-only work; one run had skipped it.
+- The router skill now also activates for read-only reviews of model selection, model qualification claims, or model cost, and whenever the user asks to use ai-native-sdlc. In 3 of 4 earlier Claude Code runs, `model-override` had skipped the plugin as read-only. After the change it activated in 8 of 8 runs across `claude-sonnet-5` and `claude-sonnet-5-5`. Six unrelated cost questions about cloud hosting and budgets were also tried across both models, and none activated the plugin.
+- Fixed the guard hook leaving the transcript file open after reading it (`ResourceWarning` in `hooks/edit_guard.py`).
+
 ## 0.5.0 - 2026-10-03
 
 - Verification at release: the full 12-case behavior suite ran on Claude Code (`claude-sonnet-5`) and Codex (`gpt-6-astra`) with independent transcript review, plus targeted re-runs after the final fixes. Known limits: `claude-sonnet-5-5` is not yet qualified for Controlled work; the separate test author is skipped in some Claude Code runs; the guard hook is Claude Code only; on Claude Code, `typo`, `payment`, `model-override`, `qualification`, and `cost-retry` missed parts of the rubric in the last full suite run; the visual gate and workspace marketplace import were not tested.

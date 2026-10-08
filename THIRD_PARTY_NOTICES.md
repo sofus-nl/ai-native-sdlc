@@ -10,5 +10,6 @@ This plugin uses original wording and implementation-neutral workflow ideas info
 - Garry Tan and contributors, [G-STACK](https://github.com/garrytan/gstack), MIT License.
 - Dietrich Gebert and contributors, [Ponytail](https://github.com/dietrichgebert/ponytail), MIT License.
 - Julius Brussee and contributors, [Caveman](https://github.com/juliusbrussee/caveman), MIT License for skills and adoption surfaces. Engine-linked runtime components use BSL-1.1 and are not bundled here.
+- Samir Sawarkar, [asd-ste100-skill](https://github.com/samirsawarkar/asd-ste100-skill), MIT License. Clarity rules are informed by ASD-STE100 Simplified Technical English, a specification of ASD (AeroSpace and Defence Industries Association of Europe); this plugin does not claim ASD-STE100 compliance.
 
 The plugin is not affiliated with or endorsed by those projects. No third-party code is bundled.

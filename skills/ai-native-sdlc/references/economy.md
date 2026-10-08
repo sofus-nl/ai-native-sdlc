@@ -43,6 +43,7 @@ Never simplify away trust-boundary validation, security, privacy, accessibility,
 - Lead with the result. Use one short sentence per fact and stable technical terms.
 - Remove pleasantries, repeated restatement, narration, speculative tours, and conclusions already implied by evidence.
 - Preserve exact code, commands, file paths, errors, names, versions, dates, numbers, units, and words such as `not`, `never`, `only`, and `except`.
+- Write one action per step in active voice. Use one term per thing; never rotate synonyms. Never upgrade a hedge such as `may`, `likely`, or `not verified` to a fact. Mark a risky step `WARNING:` (data loss or security) or `CAUTION:` (recoverable harm), command first, reason second.
 - Do not invent abbreviations or damage grammar for cosmetic brevity.
 - Expand when compression could obscure a security warning, irreversible action, ordered procedure, architectural disagreement, or requested explanation.
 
