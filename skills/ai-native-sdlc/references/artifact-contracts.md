@@ -20,7 +20,7 @@ Store Standard and Controlled work under `.sdlc/changes/<slug>/`. Use existing r
 - Reference oracle: the design, document, or implementation the result must match, or `none`; never the code whose behavior this change alters
 - Required behavior and non-goals
 - Interfaces, data flow, trust boundaries, and failure behavior
-- Acceptance criteria with stable IDs such as `AC-1`
+- Acceptance criteria with stable IDs such as `AC-1`; each criterion states one testable condition and avoids `should`, `appropriate`, `as needed`, `etc.`, `TBD`, and `and/or` (quoted UI copy and code are exempt)
 - Policy conflicts, decisions, and unresolved risks
 - Rollout and observability needs
 

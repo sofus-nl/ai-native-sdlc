@@ -37,14 +37,15 @@ def decide(aEvent):
         return None
     texts, routed = [], False
     try:
-        for line in open(aEvent.get('transcript_path') or '', encoding='utf-8', errors='replace'):
-            routed = routed or 'ai-native-sdlc:ai-native-' in line
-            try:
-                entry = json.loads(line)
-            except ValueError:
-                continue
-            if entry.get('type') == 'assistant':
-                texts += [c.get('text', '') for c in entry['message'].get('content', []) if c.get('type') == 'text']
+        with open(aEvent.get('transcript_path') or '', encoding='utf-8', errors='replace') as transcript:
+            for line in transcript:
+                routed = routed or 'ai-native-sdlc:ai-native-' in line
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if entry.get('type') == 'assistant':
+                    texts += [c.get('text', '') for c in entry['message'].get('content', []) if c.get('type') == 'text']
     except OSError:
         return None
     if not routed:

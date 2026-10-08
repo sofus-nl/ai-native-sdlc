@@ -17,7 +17,18 @@ Read when selecting a worker model, considering a model change, evaluating model
 
 ## Qualify models and cheaper defaults
 
-Use an existing evaluation or evidence record, not a new runtime database. For any model qualification claim, including a cheaper default, require task class; exact model/version and effort; host/tools/context; baseline; acceptance and review criteria; dated evidence; paired failures; and complete cost with its billing basis. Fast work stays inline; do not create lifecycle files just to record a selection.
+Use an existing evaluation or evidence record, not a new runtime database. A model qualification claim, including a cheaper default, needs every item below. When you assess a model qualification claim, report each item by name as present or missing. Skip this list when no one claims a model is qualified.
+
+- task class
+- exact model/version and effort
+- host, tools, and context
+- baseline
+- acceptance and review criteria
+- dated evidence
+- paired failures
+- complete cost with its billing basis
+
+Fast work stays inline; do not create lifecycle files just to record a selection.
 
 Before enabling a cheaper default, compare exact configurations on held-out representative tasks with repeated runs and equal tools, permissions, acceptance, and final verification. Examine baseline-success/candidate-failure cases, critical defects, and each task class separately from aggregate scores. Choose sample size for the required assurance; smoke fixtures do not qualify models. Report uncertainty and failed attempts, not only successful calls. No quality-loss tolerance is introduced by this policy.
 
