@@ -23,12 +23,12 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
    - For a written oracle or Reference oracle `none`, inspect the rendered implementation against the stated requirements at the viewport and interaction states the spec names.
 6. For production claims, verify the intended live endpoint or deployment, not a preview.
 7. Record gaps and limitations plainly. Partial proof supports only a partial claim.
-8. Re-read the diff and acceptance map. If any claim lacks evidence, return to the correct earlier skill.
+8. Re-read the original request, the diff, and the acceptance map. Map every requested part to a supported claim or a reported unmet item; a part with neither is a dropped requirement. If any claim lacks evidence or any part was dropped, return to the correct earlier skill.
 9. When every accepted claim passes, stop. Do not add unrequested hardening, cleanup, tests, or documentation.
 10. Update `state.md` to `verified` only when all required claims are supported. Then invoke `ai-native-ship` if release is in scope.
 
 ## Evidence format
 
-For each claim report: `claim -> command/observation -> result -> context/limitation`.
+For each claim report: `claim -> command/observation -> result -> context/limitation`. End with the count of met and unmet claims.
 
 Never rely on an earlier run, another agent's assertion, or "should."

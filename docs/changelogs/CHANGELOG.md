@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - Unreleased
+
+- Added completion rules informed by unlazy (MIT License). Wording only; no scripts or hooks bundled. See ADR-005.
+  - Router invariant: finish every in-scope part of the request, with no placeholders, stubs, `TODO`s, elided code, or silently deferred remainder. Minimal means the least code per part, not fewer parts. A part that cannot be finished is reported as unmet with its reason.
+  - Router output: mark each requested part met or unmet, and re-measure every reported number or label it `not measured`.
+  - Build: each checkpoint is implemented completely, and self-review also hunts defects, placeholders, and unhandled cases.
+  - Verify: step 8 re-reads the original request and maps every requested part to a supported claim or a reported unmet item; the evidence report ends with met and unmet counts.
+- Not yet verified: the 12-case behavior suite has not run on this release.
+
 ## 0.5.1 - 2026-10-08
 
 - Verification: the full 12-case behavior suite ran with independent transcript review on three hosts: Claude Code 2.1.294 with `claude-sonnet-5` and `claude-sonnet-5-5`, and Codex 0.160.1 with `gpt-6.1-sol`. Codex used `gpt-6.1-sol`, not the `gpt-6-astra` used for 0.5.0. Results were 9/12, 12/12, and 12/12. All filesystem and executable acceptance checks passed. Reviewers attributed none of the three `claude-sonnet-5` failures to this release:

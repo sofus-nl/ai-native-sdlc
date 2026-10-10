@@ -145,3 +145,31 @@ Compliance is instruction-only and therefore probabilistic (see ADR-003). No new
 ### Revisit when
 
 A behavior transcript shows a vague acceptance criterion or an upgraded hedge passing a gate. Then add a non-blocking check to `hooks/edit_guard.py` on writes to `.sdlc/changes/*/spec.md`.
+
+## ADR-005: Absorb unlazy completion rules as wording only (2026-10-10)
+
+### Status
+
+Accepted (2026-10-10).
+
+### Context
+
+Agents stop short: they leave placeholders, drop parts of multi-part requests, and report unmeasured numbers. The unlazy repo (MIT, Leonxlnx) addresses this with acceptance gates written before work, a Depth Tree of leaf ledgers, a four-pass leaf loop, a final-report audit, and an optional Claude Code Stop hook backed by about 400 KB of Node scripts. This plugin already writes acceptance criteria before building, treats a worker report as unproven, requires fresh evidence, and nudges once at Stop for unfinished Standard and Controlled changes. The remaining gaps were: no explicit ban on placeholders or deferred remainder, verify re-read the acceptance map but not the original request, no met/unmet report, and reported numbers were not re-measured.
+
+### Decision
+
+Add the missing rules as wording only, in original text: one router invariant (finish every in-scope part; no placeholders, stubs, `TODO`s, elided code, or deferred remainder; minimal means least code per part, not fewer parts; report unfinished parts as unmet), a router output rule (met/unmet per part; re-measure numbers or label them `not measured`), a completeness clause and defect hunt in build self-review, and an original-request re-read with met/unmet counts in verify.
+
+### Consequences
+
+Compliance is instruction-only and therefore probabilistic (see ADR-003). The rules apply to every lane, including Fast. No new runtime dependency, and the "No third-party code is bundled" notice stays true.
+
+### Alternatives rejected
+
+- **(a) Vendoring unlazy's gate-check, dispatch, and stop-hook scripts** — bundles third-party code, adds a surface where agents approve arbitrary shell `CHECK:` commands, and duplicates `ai-native-verify`.
+- **(b) A Stop hook that blocks several times until gates are met** — loop risk, and the hook-guard design is still an open decision; the existing one-nudge `decideStop` stays.
+- **(c) The Depth Tree with per-leaf ledgers** — ceremony that overlaps the existing plan checkpoints.
+
+### Revisit when
+
+A behavior transcript shows a dropped request part or a placeholder passing verify. Then add a behavior case to `scripts/behavior_check.py`.
