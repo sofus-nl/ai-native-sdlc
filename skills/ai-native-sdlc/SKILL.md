@@ -38,6 +38,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 - Update `state.md` only when a durable artifact exists. Record facts, decisions, evidence, deviations, and the next action, not chat history.
 - Never commit, push, open a PR, deploy, roll back, message people, or modify external systems without authorization already present in the request.
 - Completion claims require fresh evidence. Standard and Controlled work use `ai-native-verify`; Fast work may verify inline.
+- Finish every in-scope part of the request. Leave no placeholders, stubs, `TODO`s, elided code such as `// rest unchanged`, or silently deferred remainder. Minimal means the least code per part, not fewer parts. Report a part you cannot finish as unmet with its reason, never as done.
 
 For artifact shapes, read [artifact-contracts.md](references/artifact-contracts.md) only when creating or updating lifecycle files.
 
@@ -47,4 +48,4 @@ For authorized Git checkpoints, including Fast work, apply [checkpoints.md](refe
 
 ## Output
 
-Lead with the result. State lane, evidence, risk, next action, and blocker once. Preserve exact code, commands, paths, errors, numbers, and negation.
+Lead with the result. State lane, evidence, risk, next action, and blocker once. Preserve exact code, commands, paths, errors, numbers, and negation. Mark each requested part met or unmet. Re-measure every number you report; label any other number `not measured`.
