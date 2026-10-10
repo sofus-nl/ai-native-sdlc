@@ -18,7 +18,7 @@ When a leaf skill opened this file, use only its lane and invariants. Do not rou
 5. If `.sdlc/changes/*/state.md` identifies this work, resume its `next_action`; do not restart the lifecycle. For model selection, model qualification claims, or cost comparisons, read [model-selection.md](references/model-selection.md) before answering, including read-only and Fast work.
 6. For Fast work, stay inline: state the short plan, make the smallest authorized edit, inspect the diff, run focused proof, and report fresh evidence. Use `ai-native-debug` first only when the cause is unknown. Do not create lifecycle files.
 7. For Standard or Controlled work, invoke only the next matching skill through the host's skill mechanism; never do a leaf skill's work from this router:
-   - unclear outcome, new product behavior, no `spec.md` yet, or Controlled work without an approved `intent.md` -> `ai-native-shape`; a plan-only request still gets draft `spec.md` and `plan.md`, with nothing marked accepted and the approvals still needed listed
+   - unclear outcome, new product behavior, no `spec.md` yet, or Controlled work without an approved `intent.md` -> `ai-native-shape`; a plan-only request still gets draft `spec.md` and `plan.md`, with nothing marked accepted and the approvals still needed listed, including the Controlled approval after checkpoint 1
    - accepted outcome with `spec.md` needing implementation design -> `ai-native-plan`
    - accepted plan -> `ai-native-build`
    - defect or failed check with unknown cause -> `ai-native-debug`

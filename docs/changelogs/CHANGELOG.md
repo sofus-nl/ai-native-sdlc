@@ -1,13 +1,17 @@
 # Changelog
 
-## 0.6.0 - Unreleased
+## 0.6.0 - 2026-10-10
 
+- Verification: the full 12-case behavior suite ran with independent transcript review on Claude Code 2.1.296 with `claude-sonnet-5-5` and Codex 0.161.0 with `gpt-6.1-sol` (reasoning effort low). Results were 11/12 and 12/12. All filesystem and executable acceptance checks passed. `claude-sonnet-5` was not re-run.
+  - Claude Code `payment` failed: the plan-only Controlled draft did not name the human approval needed after checkpoint 1. In a paired run on `claude-sonnet-5-5` the gap appeared in 1 of 3 runs on 0.5.1 and in 3 or 4 of 4 runs on 0.6.0 before the fix below, and in 1 or 2 of 4 runs after it. Small samples: a direction, not a rate. Codex named the approval in 2 of 2 runs after the fix.
+  - Run limits: both hosts ran with permission prompts and sandboxes off in disposable fixture folders, because the Windows Codex sandbox blocked or hung every command. Codex ran from an isolated `CODEX_HOME` with the plugin installed from GitHub; user-level skills in `~/.agents/skills` stayed discoverable but no scored session invoked them. The user's global CLAUDE.md stayed loaded on Claude Code.
+  - Observed: build and verify reports listed met and unmet counts (for example "4 met, 0 unmet"), and no changed file had placeholders. Met/unmet marking was uneven in Fast and read-only cases, and in two cases the final report did not re-measure figures it quoted from fixtures or workers.
+- Fixed: the router's plan-only clause now lists the Controlled approval after checkpoint 1 among the approvals still needed, because `ai-native-plan`, which states that rule, was skipped in the failing run.
 - Added completion rules informed by unlazy (MIT License). Wording only; no scripts or hooks bundled. See ADR-005.
   - Router invariant: finish every in-scope part of the request, with no placeholders, stubs, `TODO`s, elided code, or silently deferred remainder. Minimal means the least code per part, not fewer parts. A part that cannot be finished is reported as unmet with its reason.
   - Router output: mark each requested part met or unmet, and re-measure every reported number or label it `not measured`.
   - Build: each checkpoint is implemented completely, and self-review also hunts defects, placeholders, and unhandled cases.
   - Verify: step 8 re-reads the original request and maps every requested part to a supported claim or a reported unmet item; the evidence report ends with met and unmet counts.
-- Not yet verified: the 12-case behavior suite has not run on this release.
 
 ## 0.5.1 - 2026-10-08
 
