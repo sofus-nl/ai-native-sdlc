@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 - Unreleased
+
+- Fixed the guard hook denying file changes with "State the lane" after the lane was stated, in two cases:
+  - Brief mode: the lane was stated through `SendUserMessage` (alias `Brief`). The hook read only assistant text blocks, so it never saw the statement. It now also reads the `message` of those tool calls.
+  - Phrasing: "Lane is Fast" or "Lane for this: Fast" did not match, because only punctuation was allowed between "lane" and the lane name. Up to 20 characters on the same line are now allowed, the same as for "Fast lane".
+- The denial now gives an example of an accepted statement ("Lane: Fast"), so a retry does not depend on guessing the pattern.
+
 ## 0.6.0 - 2026-10-10
 
 - Verification: the full 12-case behavior suite ran with independent transcript review on Claude Code 2.1.296 with `claude-sonnet-5-5` and Codex 0.161.0 with `gpt-6.1-sol` (reasoning effort low). Results were 11/12 and 12/12. All filesystem and executable acceptance checks passed. `claude-sonnet-5` was not re-run.

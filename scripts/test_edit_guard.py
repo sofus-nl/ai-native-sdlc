@@ -32,7 +32,15 @@ class EditGuardTest(unittest.TestCase):
             self.assertIsNone(decide({**read, 'transcript_path': path}))
             self.assertIsNone(decide({**sdlc, 'transcript_path': path}))
             # Fast is allowed; Controlled is blocked, including shell writes, until a plan approval exists.
-            self.assertIsNone(decide({**edit, 'transcript_path': transcript(folder, 'Lane: Fast.')}))
+            for said in ('Lane: Fast.', 'Fast lane.', 'The lane is Fast.', 'Lane for this: Fast'):
+                self.assertIsNone(decide({**edit, 'transcript_path': transcript(folder, said)}), said)
+            self.assertIsNotNone(decide({**edit, 'transcript_path': transcript(folder, 'Going Fast.')}))
+            # Brief mode states the lane through SendUserMessage instead of a text block.
+            brief = Path(transcript(folder))
+            brief.write_text(brief.read_text(encoding='utf-8') + '\n' + json.dumps(
+                {'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'SendUserMessage',
+                                                               'input': {'message': 'Lane: Fast.'}}]}}), encoding='utf-8')
+            self.assertIsNone(decide({**edit, 'transcript_path': str(brief)}))
             path = transcript(folder, '**Lane:** Controlled, because this is a payment API.')
             self.assertIsNotNone(decide({**edit, 'transcript_path': path}))
             self.assertIsNotNone(decide({**heredoc, 'transcript_path': path}))

@@ -7,7 +7,7 @@ from pathlib import Path
 
 EDIT_TOOLS = {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}
 SHELL_TOOLS = {'Bash', 'PowerShell'}
-LANE = re.compile(r'\b(fast|standard|controlled)\b[^.\n]{0,20}\blane\b|\blane\b\W{0,6}(fast|standard|controlled)\b', re.I)
+LANE = re.compile(r'\b(fast|standard|controlled)\b[^.\n]{0,20}\blane\b|\blane\b[^.\n]{0,20}?\b(fast|standard|controlled)\b', re.I)
 REDIRECT = re.compile(r'\d?>>?\s*([^\s;&|<>]+)')
 HEREDOC = re.compile(r'<<-?\s*[\'"]?(\w+)[\'"]?[^\n]*\n.*?\n\s*\1\b', re.S)
 # ponytail: shell write detection is a heuristic; a command that writes through an unlisted program slips past.
@@ -45,7 +45,12 @@ def decide(aEvent):
                 except ValueError:
                     continue
                 if entry.get('type') == 'assistant':
-                    texts += [c.get('text', '') for c in entry['message'].get('content', []) if c.get('type') == 'text']
+                    for c in entry['message'].get('content', []):
+                        # Brief mode sends user-facing text through SendUserMessage (alias Brief), not text blocks.
+                        if c.get('type') == 'tool_use' and c.get('name') in ('SendUserMessage', 'Brief'):
+                            texts.append(str((c.get('input') or {}).get('message', '')))
+                        elif c.get('type') == 'text':
+                            texts.append(c.get('text', ''))
     except OSError:
         return None
     if not routed:
@@ -54,7 +59,7 @@ def decide(aEvent):
               for p in Path(aEvent.get('cwd') or '.').glob('.sdlc/changes/*/state.md')]
     lanes = [m.group(1) or m.group(2) for m in LANE.finditer('\n'.join(texts + states))]
     if not lanes:
-        return 'State the lane (Fast, Standard, or Controlled) in a message before changing files.'
+        return 'State the lane (Fast, Standard, or Controlled) in a message before changing files, for example "Lane: Fast".'
     lane = lanes[-1].lower()
     missing = [g for g in GATES.get(lane, ()) if not any(re.search(rf'gate:\s*["\']?{g}\b', s) for s in states)]
     if not missing:
