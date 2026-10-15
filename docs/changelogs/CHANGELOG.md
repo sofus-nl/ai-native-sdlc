@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.6.1 - Unreleased
+## 0.6.1 - 2026-10-15
 
-- Fixed the guard hook denying file changes with "State the lane" after the lane was stated, in two cases:
+- Verification: hook-only release, so the 12-case behavior suite did not run (`docs/behavior-checks.md` requires it for skill-instruction changes). Instead, headless Claude Code 2.1.300 sessions with `claude-sonnet-5-5` replayed the reported failure on a typo fixture: the agent writes "The lane is Fast." and then edits. On 0.6.0 the hook blocked every edit (4 denials) and the agent gave up. On 0.6.1, 6 of 6 sessions edited with no denial. Without the re-read below, 3 of 4 sessions were denied once. Brief mode is not available in headless sessions, so the `SendUserMessage` path is covered by unit tests only. Codex does not load the hook and was not re-run.
+- Fixed the guard hook denying file changes with "State the lane" after the lane was stated, in three cases:
   - Brief mode: the lane was stated through `SendUserMessage` (alias `Brief`). The hook read only assistant text blocks, so it never saw the statement. It now also reads the `message` of those tool calls.
   - Phrasing: "Lane is Fast" or "Lane for this: Fast" did not match, because only punctuation was allowed between "lane" and the lane name. Up to 20 characters on the same line are now allowed, the same as for "Fast lane".
+  - Same message: when the lane statement and the tool call were in one assistant message, the statement could reach the transcript after the hook read it. When no lane is found, the hook now re-reads the transcript every 0.1 s for up to 2 s before denying. In the sessions above the statement arrived within 0.7 s. A write with no stated lane is now denied after that 2 s wait.
 - The denial now gives an example of an accepted statement ("Lane: Fast"), so a retry does not depend on guessing the pattern.
 
 ## 0.6.0 - 2026-10-10
