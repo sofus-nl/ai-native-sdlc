@@ -1,6 +1,7 @@
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -41,6 +42,13 @@ class EditGuardTest(unittest.TestCase):
                 {'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'SendUserMessage',
                                                                'input': {'message': 'Lane: Fast.'}}]}}), encoding='utf-8')
             self.assertIsNone(decide({**edit, 'transcript_path': str(brief)}))
+            # The statement in the same message as the call can reach the transcript after the hook starts.
+            late = Path(transcript(folder))
+            line = '\n' + json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Lane: Fast.'}]}})
+            timer = threading.Timer(0.3, lambda: late.write_text(late.read_text(encoding='utf-8') + line, encoding='utf-8'))
+            timer.start()
+            self.assertIsNone(decide({**edit, 'transcript_path': str(late)}))
+            timer.join()
             path = transcript(folder, '**Lane:** Controlled, because this is a payment API.')
             self.assertIsNotNone(decide({**edit, 'transcript_path': path}))
             self.assertIsNotNone(decide({**heredoc, 'transcript_path': path}))

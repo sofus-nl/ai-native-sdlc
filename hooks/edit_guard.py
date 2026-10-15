@@ -3,6 +3,7 @@
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 EDIT_TOOLS = {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}
@@ -24,7 +25,7 @@ def shellWritesOutsideSdlc(aCommand):
     return bool(unknown) or any('.sdlc' not in t for t in targets)
 
 
-def decide(aEvent):
+def decide(aEvent, aAttempt=0):
     tool, args = aEvent.get('tool_name'), aEvent.get('tool_input') or {}
     if tool in EDIT_TOOLS:
         if '.sdlc' in Path(args.get('file_path') or args.get('notebook_path') or '').parts:
@@ -58,6 +59,10 @@ def decide(aEvent):
     states = [p.read_text(encoding='utf-8', errors='replace')
               for p in Path(aEvent.get('cwd') or '.').glob('.sdlc/changes/*/state.md')]
     lanes = [m.group(1) or m.group(2) for m in LANE.finditer('\n'.join(texts + states))]
+    # Text in the same message as this tool call can reach the transcript up to ~1 s after the hook starts.
+    if not lanes and aAttempt < 20:
+        time.sleep(0.1)
+        return decide(aEvent, aAttempt + 1)
     if not lanes:
         return 'State the lane (Fast, Standard, or Controlled) in a message before changing files, for example "Lane: Fast".'
     lane = lanes[-1].lower()
