@@ -53,7 +53,7 @@ approvals:
     evidence: durable link, commit, or conversation reference
 ```
 
-Use only the values listed above for `status`, `lane`, `current_gate`, and approval `gate`. Record any other decision, such as a visual acceptance, below the header. `closed` marks a finished or abandoned change: set it, then move the folder to `.sdlc/archive/<slug>/` as the change's last file change, or remove it where repository policy says so.
+Use only the values listed above for `status`, `lane`, `current_gate`, and approval `gate`. Record any other decision, such as a visual acceptance, below the header. `closed` marks a finished change, or one the user calls abandoned; close only the current change. Set `status: closed`, then move the folder to `.sdlc/archive/<slug>/` as the change's last file change, or remove it only where repository instructions explicitly say so.
 
 A `checkpoint` approval's `evidence` names the pre-authorized checkpoints and the plan revision they come from. Any later plan change voids it; without a stated scope it covers only the next checkpoint. During build, `next_action` names `checkpoint n/total`.
 

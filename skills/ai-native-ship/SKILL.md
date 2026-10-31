@@ -18,15 +18,14 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 
 Perform only the steps applicable to the authorized boundary; stop when that boundary is complete.
 
-1. Create the smallest coherent commit only when authorized.
+1. Create the smallest coherent commit only when authorized. When this delivery finishes the change (released with no monitoring left, or merged with no later release planned), make its last commit before the merge or release close the change: set `status: closed` and move `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/`, or remove the folder only where repository instructions explicitly say so. Without an authorized commit, report the close as the next action.
 2. Push or open/update a PR only when authorized. The PR must link intent/spec/plan where used, summarize risk, list proof and limitations, and state rollback.
 3. Watch required checks and review comments. Fix verified findings through the normal build-review-verify loop; do not blindly satisfy comments.
 4. Keep author, reviewer, and approver distinct for Controlled work. Green automation never grants production authority.
 5. Deploy only to the authorized environment with the repository's existing mechanism.
 6. Run a production-relevant canary against the intended domain, service, or artifact. Compare the deployed revision with the intended revision.
 7. If the canary fails, stop or use only a pre-authorized recovery runbook. Capture evidence and route diagnosis to `ai-native-debug`.
-8. Only after an actual release, record its revision, environment, evidence, approver, and known limitations in the authoritative release system, and update state to `released` or `monitoring`. For commit, push, or PR-only work, report that boundary and stop without marking a release or performing later delivery steps.
-9. Close a finished change: once it is released with no monitoring left, or merged with no release step to follow, set `status: closed`. Then, as the change's last file change, move `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/`, or remove it where repository policy says so.
+8. Only after an actual release, record its revision, environment, evidence, approver, and known limitations in the authoritative release system, and update state to `released` or `monitoring` unless step 1 already closed the change. For commit, push, or PR-only work, report that boundary and stop without marking a release or performing later delivery steps.
 
 ## Completion
 

@@ -197,19 +197,20 @@ A private review of two weeks of session logs found one project with 33 change f
 
 ### Decision
 
-Add `closed` to the `status` values in `artifact-contracts.md`. `closed` marks a finished or abandoned change. Ship closes a change once it is released with no monitoring left, or merged with no release to follow. Closing sets `status: closed`, then moves `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/` as the change's last file change, or removes it where repository policy says so. `status`, `lane`, `current_gate`, and approval `gate` take only the listed values; other decisions go below the header.
+Add `closed` to the `status` values in `artifact-contracts.md`. `closed` marks a finished change, or one the user calls abandoned; an agent closes only the current change. When a delivery finishes a change (released with no monitoring left, or merged with no later release planned), ship makes the last commit before the merge or release close it: `status: closed`, then `.sdlc/changes/<slug>/` moved to `.sdlc/archive/<slug>/`, or removed only where repository instructions explicitly say so. Closing inside that commit keeps it within the authorized delivery; a close after the merge would need a new commit and push to reach the integration branch. Without an authorized commit, ship reports the close as the next action. `status`, `lane`, `current_gate`, and approval `gate` take only the listed values; other decisions go below the header.
 
 ### Consequences
 
-- The artifact contract gains one status value and one path. The change is additive, so it ships in a minor version (0.7.0). Existing folders stay where they are; nothing migrates them.
-- `.sdlc/changes/` holds only open work, so resume and the guard hook see fewer stale folders.
+- The artifact contract gains one status value and one path, and restricts four fields to their listed values. Existing folders with other values stay where they are and fall outside the contract until closed; nothing migrates them. In `0.y.z` both kinds of change ship as a minor version (0.7.0).
+- Newly finished changes leave `.sdlc/changes/`, so resume sees fewer stale folders.
+- The guard hook counts any `mv` or `rm` as a write outside `.sdlc/`. In a guarded session it denies archiving a change that lacks the lane's gate approvals, such as an abandoned draft, so that folder is moved by hand.
 - The guard hook reads only `.sdlc/changes/`. After archiving, a later write in the same session is checked against the lane stated in chat only.
 - Compliance is instruction-only and therefore probabilistic (see ADR-003).
 
 ### Alternatives rejected
 
 - **Reuse `released` as the terminal status.** It does not fit a change merged with no release step, or an abandoned one, which is where the invented statuses came from.
-- **Delete finished folders by default.** It removes the in-repository record; Git history is harder to find than a folder. Removal stays available where repository policy asks for it.
+- **Delete finished folders by default.** It removes the in-repository record; Git history is harder to find than a folder. Removal stays available where repository instructions explicitly ask for it.
 - **A single active-change pointer file.** The 0.6.2 hook already infers the active change from the session, and a shared pointer would fork across worktrees and branches the same way `state.md` did.
 - **A status validator script.** An agent-run check holds no better than wording (ADR-004).
 
