@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 - Unreleased
+
+- Changed skill wording for the log-review findings that the 0.6.2 hook fixes did not cover. Wording only; the hook is unchanged.
+  - Router: state the lane in a message before the first file change, as `Lane: Fast`, `Lane: Standard`, or `Lane: Controlled`. Agents often edited first, and the guard hook then denied them; one session stated its lane two hours after its first source edit.
+  - Router: never lower the lane to clear a guard denial; report the denial instead. Two agents switched from Standard to Fast after a denial and then edited with no plan or review.
+  - Router and ship: no answer is not consent. A question that times out or goes unanswered blocks the gated step, and nothing is committed, pushed, merged, tagged, published, or deployed on a timeout. One release was tagged after a question went unanswered for 5 minutes.
+  - Router: a code change after `status: verified`, including a merge of another branch, sets `status: building`, and the delta is reviewed and verified before a merge or release. In one session, code added after verify reached main without review.
+  - Router and build: run the lane test again when scope grows. In one change that stayed Standard, scope grew to opening user-supplied files, and review found a Critical XSS late.
+  - Router and verify: Standard and Controlled work invoke `ai-native-review` and then `ai-native-verify` before any completion claim, and `ai-native-ship` for any merge or release. A reviewer or verifier agent dispatched without the skill does not count. Verify now hands off to ship for a PR or merge, not only for a release. Sessions skipped verify and ship despite PRs and merges, and ran reviews as plain agent calls.
+  - Review: a re-review runs in fresh context from the authoritative inputs and the current diff, without the prior review's conclusions or the author's account of the fix. Re-reviews had gone to the same reviewer with the author's summary.
+- Added a `closed` status and an archive folder. Ship closes a change once it is released with no monitoring left, or merged with no release to follow: it sets `status: closed`, then moves the folder to `.sdlc/archive/<slug>/`, or removes it where repository policy says so. `artifact-contracts.md` now limits `status`, `lane`, `current_gate`, and approval `gate` to the listed values. One project had 33 change folders that were never closed, with statuses and gate names outside the contract (`done`, `merged`, `delivery`, free text). The contract change is additive, and existing change folders are untouched. See ADR-006.
+- Known limits:
+  - The guard hook reads only `.sdlc/changes/`. After a change is archived, the hook checks later writes in that session against the lane stated in chat only, so further Standard work needs a new change folder.
+
 ## 0.6.2 - 2026-10-31
 
 - Verification: hook-only release, so the 12-case behavior suite did not run. `scripts/test_edit_guard.py` covers each fix below. A replay fed the logged hook events of three desktop sessions from one private project (2026-10-17 to 2026-10-30, all on 0.6.1) through both versions. It read today's `state.md` files, not the files as they were then.

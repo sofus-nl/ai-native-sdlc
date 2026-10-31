@@ -39,7 +39,7 @@ Store Standard and Controlled work under `.sdlc/changes/<slug>/`. Use existing r
 Keep it short and machine-readable:
 
 ```yaml
-status: draft|approved|planned|building|reviewing|verified|released|monitoring|blocked
+status: draft|approved|planned|building|reviewing|verified|released|monitoring|blocked|closed
 lane: standard|controlled
 current_gate: intent|design|plan|build|review|verify|release|operate
 next_action: one concrete action
@@ -52,6 +52,8 @@ approvals:
     at: ISO-8601 timestamp from a clock command run when recording, never estimated or invented
     evidence: durable link, commit, or conversation reference
 ```
+
+Use only the values listed above for `status`, `lane`, `current_gate`, and approval `gate`. Record any other decision, such as a visual acceptance, below the header. `closed` marks a finished or abandoned change: set it, then move the folder to `.sdlc/archive/<slug>/` as the change's last file change, or remove it where repository policy says so.
 
 A `checkpoint` approval's `evidence` names the pre-authorized checkpoints and the plan revision they come from. Any later plan change voids it; without a stated scope it covers only the next checkpoint. During build, `next_action` names `checkpoint n/total`.
 

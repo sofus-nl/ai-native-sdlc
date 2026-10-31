@@ -25,7 +25,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 7. Record gaps and limitations plainly. Partial proof supports only a partial claim.
 8. Re-read the original request, the diff, and the acceptance map. Map every requested part to a supported claim or a reported unmet item; a part with neither is a dropped requirement. If any claim lacks evidence or any part was dropped, return to the correct earlier skill.
 9. When every accepted claim passes, stop. Do not add unrequested hardening, cleanup, tests, or documentation.
-10. Update `state.md` to `verified` only when all required claims are supported. Then invoke `ai-native-ship` if release is in scope.
+10. Update `state.md` to `verified` only when all required claims are supported. Then invoke `ai-native-ship` if a PR, merge, or release is in scope.
 
 ## Evidence format
 

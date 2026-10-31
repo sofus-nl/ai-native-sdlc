@@ -31,7 +31,7 @@ For each finding include severity, exact location, consequence, evidence, and th
 - **Important:** likely defect, unmet acceptance criterion, material regression, or missing necessary test.
 - **Minor:** real but non-blocking maintainability or clarity cost.
 
-Verify every finding against the code. Discard false positives. Stop and report unresolved Critical or Important findings, then route authorized fixes to `ai-native-build` (in checkpoint mode, return them to the running build loop). After a fix, run a fresh review of the affected pass. Defer only with an owner and reason; user decisions stay decisions.
+Verify every finding against the code. Discard false positives. Stop and report unresolved Critical or Important findings, then route authorized fixes to `ai-native-build` (in checkpoint mode, return them to the running build loop). After a fix, run a fresh review of the affected pass in fresh context, from the authoritative inputs and the current diff. Do not give the re-reviewer the prior review's conclusions or the author's account of the fix. Defer only with an owner and reason; user decisions stay decisions.
 
 The reviewer does not edit the reviewed change. The authoring agent may prepare fixes but never approve its own Controlled-lane change. When no blocking findings remain, invoke `ai-native-verify`, except in checkpoint mode.
 

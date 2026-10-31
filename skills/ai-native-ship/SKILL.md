@@ -9,7 +9,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 
 ## Preflight
 
-1. Confirm the requested delivery boundary: local commit, branch push, PR, merge, environment deploy, or production. Apply `../ai-native-sdlc/references/checkpoints.md`; do not infer the next boundary.
+1. Confirm the requested delivery boundary: local commit, branch push, PR, merge, environment deploy, or production. Apply `../ai-native-sdlc/references/checkpoints.md`; do not infer the next boundary. A question that timed out or went unanswered authorizes nothing.
 2. Re-read repository instructions, current branch/status, authoritative artifacts, and evidence required for that boundary. Sharing an authorized working branch can precede remote CI or final review; integration and release require their applicable gates. If code changed after review or verification, repeat the affected gates before claiming readiness.
 3. Preserve unrelated work. Stage only approved paths. Never bypass branch protection, required checks, or reviewers.
 4. For versioned releases, apply `../ai-native-sdlc/references/semver.md`: verify the proposed bump against the public contract and published baseline, align version sources and release notes, and reject reuse of a released version. Confirm migration order, secrets handling, rollback or recovery command, and post-release canary when applicable. A commit-only or push-only request does not authorize a release.
@@ -26,6 +26,7 @@ Perform only the steps applicable to the authorized boundary; stop when that bou
 6. Run a production-relevant canary against the intended domain, service, or artifact. Compare the deployed revision with the intended revision.
 7. If the canary fails, stop or use only a pre-authorized recovery runbook. Capture evidence and route diagnosis to `ai-native-debug`.
 8. Only after an actual release, record its revision, environment, evidence, approver, and known limitations in the authoritative release system, and update state to `released` or `monitoring`. For commit, push, or PR-only work, report that boundary and stop without marking a release or performing later delivery steps.
+9. Close a finished change: once it is released with no monitoring left, or merged with no release step to follow, set `status: closed`. Then, as the change's last file change, move `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/`, or remove it where repository policy says so.
 
 ## Completion
 
