@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.2 - Unreleased
+## 0.6.2 - 2026-10-31
 
 - Verification: hook-only release, so the 12-case behavior suite did not run. `scripts/test_edit_guard.py` covers each fix below. A replay fed the logged hook events of three desktop sessions from one private project (2026-10-17 to 2026-10-30, all on 0.6.1) through both versions. It read today's `state.md` files, not the files as they were then.
   - All 8 logged write denials: 0.6.1 still denies all 8, and 0.6.2 allows all 8.
