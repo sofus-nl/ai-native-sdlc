@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.2 - 2026-10-31
+
+- Verification: hook-only release, so the 12-case behavior suite did not run. `scripts/test_edit_guard.py` covers each fix below. A replay fed the logged hook events of three desktop sessions from one private project (2026-10-17 to 2026-10-30, all on 0.6.1) through both versions. It read today's `state.md` files, not the files as they were then.
+  - All 8 logged write denials: 0.6.1 still denies all 8, and 0.6.2 allows all 8.
+  - All 24 logged Stop blocks: 21 came while a background agent or command was still running, and 0.6.2 allows those. The other 3 had nothing running, and 0.6.2 still blocks them once. The replay infers running work from the transcript (launched, with no completion notification yet), not from a real `background_tasks` field.
+  - 212 sampled writes that 0.6.1 allowed: 0.6.2 denies 1. It is a redirect to a temp log in a session that had not stated its lane; 0.6.1 had taken the lane from another change's `state.md`.
+  - Not run: a live Claude Code session on 0.6.2. Codex does not load the hook.
+- Fixed: the gate check read every `.sdlc/changes/*/state.md`, so one approved change unlocked writes for all work, and a stale change could force its lane on unrelated work. The hook now reads only the active change: the `state.md` that this session last wrote, through an edit tool or a shell command. If the session wrote none, it is the `state.md` that the session last read. Reading another change's `state.md` for context no longer switches the active change. Approvals count only from entries of the `approvals:` list that start with `gate:`. `current_gate: plan`, notes below the list such as "asked at the gate: plan", and `decision: rejected` entries no longer pass a gate.
+- Fixed: any change's `lane:` could override the lane stated in chat. The stricter of the stated lane and the active change's recorded lane now applies, so stating a lower lane never clears a gate.
+- Fixed: the hook was active in every session where the plugin was installed, because Claude Code writes the names of all installed skills into each transcript. It now activates only after a `Skill` call to an `ai-native-sdlc:` skill or a typed `/ai-native-sdlc:` command.
+- Fixed: the hook looked for `.sdlc` under the shell's current directory, which follows every `cd`. All 8 logged denials came from a subdirectory (`out/`, `node_modules/`, or inside `.sdlc/`). The hook now uses the absolute `state.md` path from the transcript. For a relative path, it walks up from the current directory to the nearest `.sdlc`, then tries `CLAUDE_PROJECT_DIR`.
+- Fixed: the Stop hook blocked while background work ran, and agents set `status: blocked` to get past it, which recorded false blockers. The hook now allows the stop while Claude Code reports background tasks, checks only the active change, and matches the `status:` and `lane:` keys in any case. Its message now says that `blocked` means waiting on a human only.
+- The write denial now names the active change's `state.md`, or says that this session has read or written none.
+- Known limits:
+  - A long-running background shell, such as a dev server, also suppresses the Stop nudge.
+  - Edits that belong to other work are still checked against the session's active change.
+  - An inline approval list (`approvals: [{gate: plan}]`) is not read. Write one entry per line, as `artifact-contracts.md` shows; all 123 real state files that list approvals already do.
+  - A `state.md` written by a separate script file (`python fix_state.py`) counts as read, not written. A blank line inside the `approvals:` list ends the list, so later entries are not read.
+  - Until a `state.md` is active, the last lane named in chat wins, so "Lane: Controlled. Fast lane does not apply." reads as Fast.
+  - In one desktop session, an assistant message that stated the lane did not reach the transcript file the hook reads, so the hook denied writes. The 2-second re-read does not cover that case.
+
 ## 0.6.1 - 2026-10-15
 
 - Verification: hook-only release, so the 12-case behavior suite did not run (`docs/behavior-checks.md` requires it for skill-instruction changes). Instead, headless Claude Code 2.1.300 sessions with `claude-sonnet-5-5` replayed the reported failure on a typo fixture: the agent writes "The lane is Fast." and then edits. On 0.6.0 the hook blocked every edit (4 denials) and the agent gave up. On 0.6.1, 6 of 6 sessions edited with no denial. Without the re-read below, 3 of 4 sessions were denied once. Brief mode is not available in headless sessions, so the `SendUserMessage` path is covered by unit tests only. Codex does not load the hook and was not re-run.
