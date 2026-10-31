@@ -117,6 +117,17 @@ The hook is registered from `.claude-plugin/` and not from the default `hooks/ho
 - **Marking `claude-sonnet-5-5` unsupported and stopping.** The README label already does this, but it leaves default-Sonnet users without protection.
 - **A model-judged hook** that asks a small model whether an edit is high-risk. It cannot read `state.md` from a yes/no prompt, and the deterministic check already covers the failures seen.
 
+### Amendment (0.6.2, 2026-10-31)
+
+A private review of two weeks of session logs found that the hook did not do what this ADR decided. All 8 logged write denials and 21 of 24 Stop blocks were false, and approvals from one change unlocked writes for all other work. The decision now reads as follows:
+
+- **Which `state.md` counts:** only the active change. That is the `state.md` that the session last wrote, through an edit tool or a shell command, or, if it wrote none, the one it last read. Approvals count only from entries of the `approvals:` list that start with `gate:`. The stricter of the lane stated in chat and the active change's recorded lane applies.
+- **When the hook runs:** only after a `Skill` call to an `ai-native-sdlc:` skill or a typed `/ai-native-sdlc:` command. Before 0.6.2, the list of installed skills in every transcript made the hook run in every session.
+- **Where `.sdlc` is:** the absolute path from the transcript, or else the nearest `.sdlc` above the current directory, or else `CLAUDE_PROJECT_DIR`.
+- **At the end of a turn:** the stop passes while Claude Code reports background tasks (the Stop input's `background_tasks` field). `blocked` means waiting on a human only.
+
+Rejected: a new `waiting` status in `state.md`. It changes the artifact contract (a minor version), and the host's `background_tasks` field already tells the hook that the session is paused.
+
 ## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
 
 ### Status
