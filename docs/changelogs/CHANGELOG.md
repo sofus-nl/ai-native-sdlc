@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.1 - Unreleased
+## 0.7.1 - 2026-11-07
 
 - Verification: hook-only release, so the 12-case behavior suite did not run. `scripts/test_edit_guard.py` covers each change below.
   - Replay: 15,685 distinct shell commands from 558 private Claude Code transcripts (24 days up to 2026-11-07) went through both versions of the write detection. 0.7.0 counts 3,991 of them (25.4%) as project writes, and 0.7.1 counts 2,568 (16.4%).
