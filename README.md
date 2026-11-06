@@ -92,7 +92,7 @@ Use ai-native-sdlc to resume the change recorded in .sdlc/changes/csv-export/sta
 
 Standard and Controlled work proceed through an ordered checkpoint list approved at the plan gate, each checkpoint passing its gates before the next; Controlled adds two context-isolated reviewers per checkpoint.
 
-Standard and Controlled work keep durable artifacts under `.sdlc/changes/<slug>/`. Existing state identifies the next action, so work can resume without replaying the whole conversation. Only create the artifacts the chosen lane needs.
+Standard and Controlled work keep durable artifacts under `.sdlc/changes/<slug>/`. Existing state identifies the next action, so work can resume without replaying the whole conversation. Only create the artifacts the chosen lane needs. When `ai-native-ship` finishes a change, it sets `status: closed` and moves the folder to `.sdlc/archive/<slug>/`, or removes it where repository instructions say so.
 
 The agent follows repository instructions and the user's authorization. The skills do not grant permission to commit, publish, deploy, or change external systems. They are instructions, not a sandbox or an enforced policy engine.
 

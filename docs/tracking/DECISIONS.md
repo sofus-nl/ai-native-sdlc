@@ -184,3 +184,36 @@ Compliance is instruction-only and therefore probabilistic (see ADR-003). The ru
 ### Revisit when
 
 A behavior transcript shows a dropped request part or a placeholder passing verify. Then add a behavior case to `scripts/behavior_check.py`.
+
+## ADR-006: Close finished changes with a `closed` status and an archive folder (2026-10-31)
+
+### Status
+
+Accepted (2026-10-31).
+
+### Context
+
+A private review of two weeks of session logs found one project with 33 change folders under `.sdlc/changes/`, none closed, holding 311 tracked files. Agents had invented statuses (`done`, `complete`, `merged`, free text) and gate names (`delivery`, `spike`, `merged`) for work that ended without a release, because the contract had no status for a change that is finished but not released. Open folders also made resume ambiguous and fed the hook defects fixed in 0.6.2.
+
+### Decision
+
+Add `closed` to the `status` values in `artifact-contracts.md`. `closed` marks a finished change, or one the user calls abandoned; an agent closes only the current change. When a delivery finishes a change (released with no monitoring left, or merged with no later release planned), ship makes the last commit before the merge or release close it: `status: closed`, then `.sdlc/changes/<slug>/` moved to `.sdlc/archive/<slug>/`, or removed only where repository instructions explicitly say so. Closing inside that commit keeps it within the authorized delivery; a close after the merge would need a new commit and push to reach the integration branch. Without an authorized commit, ship reports the close as the next action. `status`, `lane`, `current_gate`, and approval `gate` take only the listed values; other decisions go below the header.
+
+### Consequences
+
+- The artifact contract gains one status value and one path, and restricts four fields to their listed values. Existing folders with other values stay where they are and fall outside the contract until closed; nothing migrates them. In `0.y.z` both kinds of change ship as a minor version (0.7.0).
+- Newly finished changes leave `.sdlc/changes/`, so resume sees fewer stale folders.
+- The guard hook counts any `mv` or `rm` as a write outside `.sdlc/`. In a guarded session it denies archiving a change that lacks the lane's gate approvals, such as an abandoned draft, so that folder is moved by hand.
+- The guard hook reads only `.sdlc/changes/`. After archiving, a later write in the same session is checked against the lane stated in chat only.
+- Compliance is instruction-only and therefore probabilistic (see ADR-003).
+
+### Alternatives rejected
+
+- **Reuse `released` as the terminal status.** It does not fit a change merged with no release step, or an abandoned one, which is where the invented statuses came from.
+- **Delete finished folders by default.** It removes the in-repository record; Git history is harder to find than a folder. Removal stays available where repository instructions explicitly ask for it.
+- **A single active-change pointer file.** The 0.6.2 hook already infers the active change from the session, and a shared pointer would fork across worktrees and branches the same way `state.md` did.
+- **A status validator script.** An agent-run check holds no better than wording (ADR-004).
+
+### Revisit when
+
+Logs show agents still writing statuses or gate names outside the contract, or `.sdlc/changes/` still growing with finished work. Then add an enum check to `hooks/edit_guard.py` on writes to `state.md`.
