@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 - Unreleased
+## 0.7.0 - 2026-11-06
 
 - Verification: the 12-case behavior suite ran twice with independent transcript review, on Claude Code 2.1.316 with `claude-sonnet-5-5` and Codex 0.163.0-alpha.10.2 with `gpt-6.1-sol` (reasoning effort low). The final wording scored 10/12 and 12/12. All filesystem and executable acceptance checks passed on both hosts in both runs.
   - The first run, on the wording before an independent review, also scored 10/12 and 12/12. That review found ten ambiguities in the new skill wording and three factual errors in this entry, ADR-006, and the README; all were fixed, and the suite ran again on the result.
