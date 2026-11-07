@@ -27,7 +27,7 @@ class BehaviorCheckTest(unittest.TestCase):
             self.assertEqual((folder / '.sdlc/changes/labels/state.md').read_bytes().decode(),
                              CASES['close']['.sdlc/changes/labels/state.md'])
 
-    def test_seed_refuses_a_non_empty_directory(self):
+    def test_seed_refuses_to_overwrite_a_file_or_reuse_a_repository(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             (folder / 'labels.py').write_text('user work\n', encoding='utf-8')
@@ -35,6 +35,20 @@ class BehaviorCheckTest(unittest.TestCase):
                 seed('close', folder)
             self.assertEqual(sorted(p.name for p in folder.iterdir()), ['labels.py'])
             self.assertEqual((folder / 'labels.py').read_text(encoding='utf-8'), 'user work\n')
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            git(folder, 'init', '-q')
+            with self.assertRaises(SystemExit):
+                seed('no-reply', folder)
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), ['.git'])
+
+    def test_seed_keeps_unrelated_files_out_of_the_fixture_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / '.bashrc').write_text('unrelated\n', encoding='utf-8')
+            seed('close', folder)
+            self.assertEqual(git(folder, 'show', '--name-only', '--format=', 'HEAD').split(), ['TASK.md', 'labels.py'])
+            self.assertEqual((folder / '.bashrc').read_text(encoding='utf-8'), 'unrelated\n')
 
     def test_reopen_check_fails_until_ac3_holds(self):
         with tempfile.TemporaryDirectory() as directory:

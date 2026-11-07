@@ -4,7 +4,9 @@
 
 - Added `claude plugin eval` cases in `evals/` for 15 of the 17 behavior cases, so one command runs them on Claude Code with and without the plugin under a cost ceiling (ADR-007). `feature` and `payment-build` stay on the manual harness, because a case cannot reply to an approval stop. No skill or hook changed.
 - Added five behavior fixtures for rules added in 0.7.0 without a case: `reopen`, `scope-growth`, `guard-denial`, `close`, and `no-reply`. The filesystem checker now checks their file and Git outcomes.
-- `scripts/behavior_check.py` gains a `seed` action, which the eval scaffolds share with the manual harness. It refuses a non-empty directory, because the `close` and `no-reply` fixtures run `git init` and commit.
+- `scripts/behavior_check.py` gains a `seed` action, which the eval scaffolds share with the manual harness. It refuses a directory where it would overwrite a file or reuse a Git repository, because the `close` and `no-reply` fixtures run `git init` and commit.
+
+## 0.7.1 - 2026-11-07
 
 - Verification: hook-only release, so the 12-case behavior suite did not run. `scripts/test_edit_guard.py` covers each change below.
   - Replay: 15,685 distinct shell commands from 558 private Claude Code transcripts (24 days up to 2026-11-07) went through both versions of the write detection. 0.7.0 counts 3,991 of them (25.4%) as project writes, and 0.7.1 counts 2,568 (16.4%).

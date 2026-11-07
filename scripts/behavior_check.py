@@ -247,16 +247,19 @@ def write(folder, files):
 
 def seed(name, folder):
     """Write one case's fixture into folder; the evals/ scaffolds call this through the seed action."""
-    # Never overwrite user work, or run git init and commit inside an existing repository.
-    if folder.exists() and any(folder.iterdir()):
-        raise SystemExit(f'{folder} is not empty; seed writes only into an empty directory')
-    if name in COMMITTED:
-        write(folder, COMMITTED[name])
+    committed = COMMITTED.get(name, {})
+    # Never overwrite a file, or run git init and commit inside an existing repository; unrelated files may stay.
+    tops = {path.split('/')[0] for path in (*CASES[name], *committed)} | ({'.git'} if committed else set())
+    taken = sorted(top for top in tops if (folder / top).exists())
+    if taken:
+        raise SystemExit(f'{folder} already has {", ".join(taken)}; seed never overwrites files or reuses a repository')
+    if committed:
+        write(folder, committed)
         # Repository settings override global ones (CRLF conversion, signing, hooks) so the fixture is the same everywhere.
         for args in (('init', '-q', '-b', 'main'), ('config', 'core.autocrlf', 'false'),
                      ('config', 'commit.gpgsign', 'false'), ('config', 'core.hooksPath', '.git/hooks'),
                      ('config', 'user.name', 'Fixture'), ('config', 'user.email', 'fixture@example.invalid'),
-                     ('add', '-A'), ('commit', '-q', '-m', 'Initial fixture')):
+                     ('add', '--', *committed), ('commit', '-q', '-m', 'Initial fixture')):
             subprocess.run(['git', *args], cwd=folder, check=True)
     write(folder, CASES[name])
 
