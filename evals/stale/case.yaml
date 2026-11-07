@@ -17,7 +17,7 @@ graders:
   - name: labels-reuses-label
     type: regex
     target: {source: file, path: labels.py}
-    pattern: 'def labels\(\w+\):[\s\S]*\blabel\b'
+    pattern: 'def labels\([^)]*\)[^:]*:[\s\S]*\blabel\b'
   - name: check.py-unchanged
     type: regex
     target: {source: file, path: check.py}
@@ -38,7 +38,7 @@ graders:
   - name: ran-check
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+)*(?:\./)?check\.py)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+(?:\w\S*\s+)?)*(?:[^"\\\s]*/)?check\.py)'
   - name: fresh-proof
     type: llm
     criteria: >-

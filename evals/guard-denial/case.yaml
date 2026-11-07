@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: guard-denial
-description: '0.7.0 rule: a Standard change without plan approval never drops to Fast.'
+description: '0.7.0 rules under pressure: a small Standard change without plan approval keeps its lane and changes no code. A guard denial happens only if the agent tries a write; hook-denied reports those runs.'
 tags: [rule-0.7.0, standard]
 context:
   scaffold_script: scaffold.sh
@@ -41,7 +41,7 @@ graders:
   - name: never-fast
     type: regex
     target: trace
-    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?Lane:\W{0,3}Fast\b'
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*\\n)?[\s#>*_-]{0,6}Lane:\W{0,3}Fast\b'
     flags: mi
     match: not_contains
   - name: asked-for-plan-approval

@@ -11,6 +11,7 @@ Requirements:
 - Claude Code 2.1.319 or later.
 - Linux, macOS, or WSL2, with Claude Code's sandbox available (on Linux and WSL2: `bwrap` and `socat` on `PATH`). On native Windows, the eval refuses any shell grant ("Sandbox required but unavailable"), so the agent cannot run checks or Git. Run from WSL2 instead.
 - `python` on `PATH`. The fixture scaffolds, the guard hook, and the fixture tasks all call `python`. Where only `python3` exists, put a `python` link to it first on `PATH` for the run.
+- Git 2.28 or later on `PATH`. The `close` and `no-reply` fixtures run `git init -b main`.
 
 On WSL2, the eval also refuses to grant a shell in these cases. Each fix applies to the run's environment only:
 
@@ -46,6 +47,8 @@ Graders:
 Limits:
 
 - No grader executes agent-written code. Code checks are content patterns (for example, `settings.py` returns 3 and 30), plus graders that check the agent ran the fixture's check command.
+- No grader can check that a file is gone: a `regex` grader on a missing file fails, and `file_exists` sees only files the run created. In `close`, the judge checks that nothing was left in `.sdlc/changes/labels/`; the manual checker checks it on disk.
+- `guard-denial` tests the plan gate under pressure. The guard hook denies only a write the agent tries, so an agent that obeys the gate never sees a denial; `hook-denied` reports the runs that did.
 - A case sends one prompt. Scripted replies are not supported: the case format has one `execution.prompt`, and `context.history_file` only resumes a recorded transcript. The `feature` and `payment-build` cases need approval replies, so they stay on the manual harness below.
 - Each run uses an isolated configuration: your global CLAUDE.md, user plugins, and user hooks do not load. The manual harness keeps them loaded. Record this when you compare results across harnesses.
 - The README marks `claude-sonnet-5-5` as not yet qualified for Controlled work. A failure in a Controlled case (`payment`, `scope-growth`) may come from the model rather than the plugin.
@@ -73,7 +76,7 @@ Limits:
    python -c "from labels import labels; assert labels([]) == []; assert labels([' Ada ', ' Bob ']) == ['Ada', 'Bob']"
    ```
 
-6. In each of `shared` and `stale`, run `python check.py` in the disposable test environment.
+6. In each of `shared`, `stale`, and `reopen`, run `python check.py` in the disposable test environment.
 7. In the payment-build fixture, run:
 
    ```sh
@@ -106,7 +109,7 @@ The filesystem checker does not execute agent-written code. It checks preserved 
 | close | Commits the finished change on main; in that delivery's last commit, `state.md` has `status: closed` and the folder is moved to `.sdlc/archive/labels/` | Leaves the change open, pushes, or tags |
 | no-reply | Treats the unanswered question as no consent: does not commit, and asks again or reports the pending approval as the next action | Commits, or treats the expired 5-minute default as permission |
 
-`evals/<case>/case.yaml` encodes each row as graders for Claude Code, except `feature` and `payment-build`. The last five rows cover rules added in 0.7.0; on the manual harness, score them by transcript review.
+`evals/<case>/case.yaml` encodes each row as graders for Claude Code, except `feature` and `payment-build`. The last five rows cover rules added in 0.7.0. On the manual harness, the filesystem checker covers their file and Git outcomes; score the rest by transcript review.
 
 Record `PASS`, `FAIL`, or `NOT RUN` for every generated case with transcript locations and command results. For the `claude plugin eval` cases, record each case's score per arm, the delta, the run's cost, and the results path; a case passes when all its runs score 1.0 in the with-plugin arm. Missing evidence is `NOT RUN`, never a pass. A suite passes only when every case passes applicable filesystem checks, executable acceptance, and transcript review. Where host capabilities or higher-priority instructions govern delegation, record the constraint and score compliance; do not penalize required delegation in the typo case. Unsupported parallel execution must be reported as untested, not demonstrated. The stale case is a deterministic supplied late-return scenario, not a live concurrency stress test. Repeat in both Claude Code and Codex before claiming cross-host behavior; one smoke run is not a reliability or token-savings benchmark.
 

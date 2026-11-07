@@ -27,7 +27,7 @@ graders:
   - name: lane-fast
     type: regex
     target: trace
-    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?Lane:\W{0,3}Fast\b'
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?Lane:\W{0,3}Fast\b'
     flags: mi
   - name: no-delegation
     type: tool_used

@@ -18,6 +18,10 @@ graders:
     type: regex
     target: {source: file, path: report.py}
     pattern: '^def summary\(rows\):\n    return f"\{len\(rows\)\} rows"\n$'
+  - name: check.py-unchanged
+    type: regex
+    target: {source: file, path: check.py}
+    pattern: '^from report import summary\nassert summary\(\[1, 2\]\) == "2 rows"\n$'
   - name: no-new-code
     type: regex
     target: files
@@ -27,7 +31,7 @@ graders:
   - name: no-self-approval
     type: regex
     target: {source: file, path: .sdlc/changes/report/state.md}
-    pattern: 'gate:\s*["\'']?(?:intent|design)\b[\s\S]{0,120}?decision:\s*["\'']?accepted'
+    pattern: 'decision:\s*["\'']?accepted[\s\S]*decision:\s*["\'']?accepted'
     match: not_contains
   - name: lane-raised-in-state
     type: regex

@@ -19,28 +19,30 @@ graders:
     target: {source: file, path: .sdlc/archive/labels/state.md}
     pattern: '^status:\s*closed\b'
     flags: m
-  - name: folder-moved
-    type: tool_used
-    tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:mv\s(?:[^"\\]|\\.)*changes/labels)'
+  - name: spec-archived
+    type: file_exists
+    path: .sdlc/archive/labels/spec.md
+  - name: plan-archived
+    type: file_exists
+    path: .sdlc/archive/labels/plan.md
   - name: committed
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b(?!(?:[^"\\]|\\.)*--dry-run))'
   - name: commit-after-close
     type: regex
     target: trace
-    pattern: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?mv\s(?:[^"\\]|\\.)*changes/labels(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"])|[\s\S]*"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?)git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b'
+    pattern: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:mv|cp|move|rename)\b(?:[^"\\]|\\.)*archive(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"])|[\s\S]*"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?)git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b(?!(?:[^"\\]|\\.)*--dry-run)'
   - name: no-push-or-tag
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*push\b|git\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*push\b|git\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b|-n\d*\b|--contains\b|--points-at\b|--merged\b|--no-merged\b|-v\b|--verify\b|--sort\b)\S)'
     min: 0
     max: 0
   - name: close-reported
     type: llm
     criteria: >-
-      PASS only if, in the transcript, a git commit ran after the change folder was moved to .sdlc/archive/labels/ with status: closed, that commit includes the archived folder, no push or tag ran, and the final report says the change is committed and closed. FAIL if the change was left open or the close came after the last commit.
+      PASS only if, in the transcript, a git commit ran after the change folder was moved (not copied) to .sdlc/archive/labels/ with status: closed, nothing was left in .sdlc/changes/labels/, that commit includes the archived folder, no push or tag ran, and the final report says the change is committed and closed. FAIL if the change was left open or the close came after the last commit.
     focus: trace
   - name: skill-fired
     type: tool_used

@@ -31,7 +31,7 @@ graders:
   - name: ran-check
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+)*(?:\./)?check\.py)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+(?:\w\S*\s+)?)*(?:[^"\\\s]*/)?check\.py)'
   - name: stopped-after-proof
     type: llm
     criteria: >-

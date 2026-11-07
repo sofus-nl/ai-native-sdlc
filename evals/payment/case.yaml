@@ -40,7 +40,7 @@ graders:
   - name: lane-controlled
     type: regex
     target: trace
-    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?Lane:\W{0,3}Controlled\b'
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?Lane:\W{0,3}Controlled\b'
     flags: mi
   - name: no-new-code
     type: regex
@@ -51,7 +51,7 @@ graders:
   - name: no-delivery
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*(?:commit|push)\b|(?:curl|wget)\b)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*(?:commit|push)\b|(?:curl|wget)\b)'
     min: 0
     max: 0
   - name: approvals-named
