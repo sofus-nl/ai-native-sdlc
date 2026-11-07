@@ -128,6 +128,18 @@ A private review of two weeks of session logs found that the hook did not do wha
 
 Rejected: a new `waiting` status in `state.md`. It changes the artifact contract (a minor version), and the host's `background_tasks` field already tells the hook that the session is paused.
 
+### Amendment (0.7.1, 2026-11-07)
+
+A replay of about 15,000 shell commands from private session logs showed that the hook counted a quarter of them as project writes. Independent reviewers read all but a few dozen of the commands that this amendment stops counting; every one that was a project write came from inside a script (`os.remove`, a helper module), which no version detects by rule. Two independent reviews of the code then found holes that the first version of this amendment had opened; each is closed and tested. What counts as a gated shell write now reads as follows:
+
+- **Scratch files pass:** a redirect to a temp folder (`$TEMP`, `$TMP`, `$TMPDIR`, `/tmp`, `/var/tmp`, `/dev`) passes, unless the project itself lies under it (the project is the working directory, `CLAUDE_PROJECT_DIR`, and their parents that hold `.git` or `.sdlc`). Every other path outside `.sdlc/` counts as a project write, including a sibling clone of the repository: a wider "outside the project" rule was tried first, and a review of real commands found nine writes into sibling clones that it let through.
+- **Lifecycle writes:** a move, removal, copy, or `sed -i` whose every target is under `.sdlc/` passes. A path with `..` never counts as under `.sdlc/`.
+- **Where a target points:** a variable is resolved from the one assignment, in command position, that precedes its use; `$TEMP`, `$TMP`, and `$TMPDIR` come from the environment. A relative target follows a `cd` earlier in the command only while every directory change in the command is a plain one at the start of a segment and nothing runs in a subshell, a group, or another program; otherwise, and after `cd -` or an unknown variable, the target is a plain relative path, which counts as a project file. The hook assumes a `cd` succeeded.
+- **Quoted arguments are data:** a `>` or a command name inside a quoted argument is not a write, unless something runs that argument (`bash -c`, `eval`, `iex`, command substitution, `os.system(`, `subprocess.run(`), the quoted word is the command itself, or a quote is left unpaired. A comment line or an escaped quote that holds a quote character turns hiding off for that command, so an apostrophe in a comment cannot hide the commands after it.
+- **Sub-agents:** Claude Code calls the hook for a sub-agent's tool calls with the parent session's transcript, so the same lane and approvals apply to them.
+
+Deferred: an environment variable that lets the human switch the guard off when it is wrong. It adds to the documented interface, so it needs a minor version.
+
 ## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
 
 ### Status
@@ -203,7 +215,7 @@ Add `closed` to the `status` values in `artifact-contracts.md`. `closed` marks a
 
 - The artifact contract gains one status value and one path, and restricts four fields to their listed values. Existing folders with other values stay where they are and fall outside the contract until closed; nothing migrates them. In `0.y.z` both kinds of change ship as a minor version (0.7.0).
 - Newly finished changes leave `.sdlc/changes/`, so resume sees fewer stale folders.
-- The guard hook counts any `mv` or `rm` as a write outside `.sdlc/`. In a guarded session it denies archiving a change that lacks the lane's gate approvals, such as an abandoned draft, so that folder is moved by hand.
+- Until 0.7.1 the guard hook counted any `mv` or `rm` as a write outside `.sdlc/`, so it denied archiving a change that lacked the lane's gate approvals. Since 0.7.1 a move or removal whose every target is under `.sdlc/` passes.
 - The guard hook reads only `.sdlc/changes/`. After archiving, a later write in the same session is checked against the lane stated in chat only.
 - Compliance is instruction-only and therefore probabilistic (see ADR-003).
 

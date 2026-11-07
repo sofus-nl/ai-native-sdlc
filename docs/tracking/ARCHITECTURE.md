@@ -1,6 +1,6 @@
 # Architecture
 
-AI-native SDLC is one tree of Markdown skills in `skills/`, and Claude Code and Codex both load it. It contains no executable code. The router skill `ai-native-sdlc` picks a lane (Fast, Standard, or Controlled) and invokes the next leaf skill. Lifecycle state lives in the consuming repository under `.sdlc/changes/<slug>/`, so work resumes from `state.md` without replaying the conversation.
+AI-native SDLC is one tree of Markdown skills in `skills/`, and Claude Code and Codex both load it. The skills contain no executable code; the only runtime code shipped is the Claude Code guard hook, `hooks/edit_guard.py`, which the Claude Code manifest registers. The router skill `ai-native-sdlc` picks a lane (Fast, Standard, or Controlled) and invokes the next leaf skill. Lifecycle state lives in the consuming repository under `.sdlc/changes/<slug>/`, so work resumes from `state.md` without replaying the conversation.
 
 ## Lifecycle
 
