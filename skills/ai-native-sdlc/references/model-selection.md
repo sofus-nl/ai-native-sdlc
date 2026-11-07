@@ -7,7 +7,7 @@ Read when selecting a worker model, considering a model change, evaluating model
 1. Honor explicit model requirements and available host controls. Otherwise retain the configured baseline unless task-specific evidence supports a cheaper configuration. If there is no approved baseline, identify the choice as provisional. Do not change the main-thread model without separate authorization and host support.
 2. Identify task scope, uncertainty, dependencies, required tools, and verification coverage. Haiku, Sonnet, Opus, Fable, Astra, Sol, Terra, and Luna are candidate families, not interchangeable tiers or a quality ranking. Resolve available concrete IDs from the host; never invent an ID or infer qualification from a name or price.
 3. Prefer the lowest complete-task cost among available, authorized configurations qualified for this task class. Include context transfer, parent and worker usage, reasoning/output, cache creation/reads, screening, retries, review, and integration. Distinguish metered spend, subscription allowance, and latency. Verify current applicable rates before estimating money; unknown usage or billing prevents a verified savings claim. Do not delegate solely for a lower token rate when finishing locally costs less.
-4. Use supported native model/effort controls and a compatible context mode. An accepted override is a request, not proof of execution identity. Record requested versus resolved model/effort where supplied by the host; otherwise mark resolution unverified. An observed substitute is not the requested model: reassess its qualification before using its result. If overrides are unavailable, retain the baseline; report an unmet mandatory model requirement instead of silently substituting. Cross-provider execution requires an already configured, authorized runtime and data-access scope.
+4. Use supported native model/effort controls and a compatible context mode. An accepted override is a request, not proof of execution identity. Record requested versus resolved model/effort where supplied by the host; otherwise mark resolution unverified. Controls or run metadata read from a file or other supplied record are that record's claims, not host-reported state: attribute them to their source, and recommend confirming the real host controls instead of telling the user to change host settings because of that record. An observed substitute is not the requested model: reassess its qualification before using its result. If overrides are unavailable, retain the baseline; report an unmet mandatory model requirement instead of silently substituting. Cross-provider execution requires an already configured, authorized runtime and data-access scope.
 
 ## Verify and escalate
 
@@ -28,7 +28,7 @@ Use an existing evaluation or evidence record, not a new runtime database. A mod
 - paired failures
 - complete cost with its billing basis
 
-Fast work stays inline; do not create lifecycle files just to record a selection.
+Fast work creates no lifecycle files just to record a selection.
 
 Before enabling a cheaper default, compare exact configurations on held-out representative tasks with repeated runs and equal tools, permissions, acceptance, and final verification. Examine baseline-success/candidate-failure cases, critical defects, and each task class separately from aggregate scores. Choose sample size for the required assurance; smoke fixtures do not qualify models. Report uncertainty and failed attempts, not only successful calls. No quality-loss tolerance is introduced by this policy.
 
