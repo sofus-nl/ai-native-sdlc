@@ -31,7 +31,7 @@ graders:
     flags: mi
   - name: no-delegation
     type: tool_used
-    tool: Task
+    tool: Agent
     min: 0
     max: 0
   - name: checked-result
