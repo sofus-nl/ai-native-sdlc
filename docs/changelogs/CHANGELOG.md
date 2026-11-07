@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.7.2 - Unreleased
+## 0.7.2 - 2026-11-07
 
-- Verification so far: `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 3 runs per arm. No permissions were bypassed.
+- Verification: `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 3 runs per arm. No permissions were bypassed.
   - Full suite on the wording before the last model-selection sentence: 13 of 15 cases passed every with-plugin run, against 8 of 15 on 0.7.1. The mean with-plugin score rose from 0.93 to 0.99. No case scored lower. Cost $13.08.
   - `close`, `independent`, `payment`, and `scope-growth` went to 3/3. `reopen` went to 2/3: in the failing run the agent re-ran `python check.py` in the same command as its last edit to `labels.py`, and all three judge votes still failed it. `model-override` went to 1/3.
   - After the model-selection sentence was tightened, the three read-only cases ran 6 times each: `model-override` 5/6, `qualification` 6/6, `cost-retry` 4/6. The two failing `cost-retry` reports count both attempts and name the environment failure; one got a split vote, the other inferred that the candidate differs from the baseline although both runs say `default`. `cost-retry` passed 3/3 in the full suite.
