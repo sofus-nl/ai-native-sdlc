@@ -41,7 +41,7 @@ graders:
   - name: never-fast
     type: regex
     target: trace
-    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:[^"\\]|\\.)*\bLane:\W{0,3}Fast\b'
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?Lane:\W{0,3}Fast\b'
     flags: mi
     match: not_contains
   - name: asked-for-plan-approval

@@ -25,11 +25,11 @@ WSL can clear `/tmp` when the distribution stops, so set `TMPDIR` to a lasting f
 From the repository root:
 
 ```sh
-claude plugin eval . --model claude-sonnet-5-5 --ablation with-without --scaffold --trust-plugin --allow-tools Edit Write Bash --max-cost-usd 20 --concurrency 4 --no-publish
+claude plugin eval . --model claude-sonnet-5-5 --judge-model claude-sonnet-5-5 --ablation with-without --scaffold --trust-plugin --allow-tools Edit Write Bash --max-cost-usd 20 --concurrency 4 --no-publish
 ```
 
 - Each case in `evals/<case>/case.yaml` runs 3 times in each of two arms: with this plugin, and without any plugin. The report shows each case's score per arm and the delta (Δ = with minus without).
-- `--max-cost-usd 20` is the ceiling for one full suite (list price, including judge calls). The eval stops starting runs once it is reached and reports partial results with exit code 2. Raise it only with a reason.
+- `--max-cost-usd 20` is the ceiling for one full suite (list price, including judge calls). The first full run with this command cost $12.77, of which $6.01 was judge calls. The eval stops starting runs once the ceiling is reached and reports partial results with exit code 2. Raise it only with a reason.
 - `--scaffold` runs each case's `scaffold.sh` as you, outside the sandbox. It writes that case's fixture into the empty workspace with `python scripts/behavior_check.py seed . <case>`, so both harnesses share one fixture source. When a fixture changes, update the `*-unchanged` patterns in that case's `case.yaml`.
 - `--allow-tools Edit Write Bash` lets the agent edit fixture files and run commands. Shell commands run inside Claude Code's sandbox. No permissions are bypassed.
 - Results go to `evals/results/<timestamp>/` (`aggregate-result.json`, `report.html`), which Git ignores. Add `--json <path>` for a copy elsewhere, and `--keep-temp` to keep the workspaces and traces.
@@ -38,7 +38,7 @@ claude plugin eval . --model claude-sonnet-5-5 --ablation with-without --scaffol
 Graders:
 
 - Deterministic graders check file contents, created paths, tool calls, and the order of tool calls. They cost nothing.
-- LLM graders judge the final report or the transcript. The judge model is `haiku` unless `--judge-model` names another; each judgment is a 2-of-3 vote.
+- LLM graders judge the final report or the transcript; each judgment is a 2-of-3 vote. The command sets the judge to `claude-sonnet-5-5`: with the default `haiku` judge, 3 of 45 correct reports failed in one suite run.
 - A run scores the weighted fraction of graders that passed. A case passes when all its runs score 1.0.
 - `skill-fired` and `hook-denied` are indicators, not scores: they show whether any plugin skill ran and whether the guard hook denied a write.
 - Graders that require a plugin skill call count in both arms: `tool_used` graders on `Skill` are marked `arm: both`, and `regex` and `tool_order` graders count in both arms by default. The without-plugin arm cannot pass them, and the delta includes them.

@@ -22,19 +22,19 @@ graders:
   - name: folder-moved
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bmv\b(?:[^"\\]|\\.)*changes/labels)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:mv\s(?:[^"\\]|\\.)*changes/labels)'
   - name: committed
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
   - name: commit-after-close
     type: regex
     target: trace
-    pattern: '"command":"(?:[^"\\]|\\.)*\bmv\b(?:[^"\\]|\\.)*changes/labels(?:(?:[^"\\]|\\.)*|[\s\S]*"command":"(?:[^"\\]|\\.)*)\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b'
+    pattern: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?mv\s(?:[^"\\]|\\.)*changes/labels(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"])|[\s\S]*"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?)git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b'
   - name: no-push-or-tag
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*push\b|\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*push\b|git\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
     min: 0
     max: 0
   - name: close-reported

@@ -17,13 +17,13 @@ graders:
   - name: no-commit
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
     min: 0
     max: 0
   - name: no-delivery
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*(?:push|merge)\b|\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*(?:push|merge)\b|git\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
     min: 0
     max: 0
   - name: still-blocked

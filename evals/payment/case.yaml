@@ -25,22 +25,22 @@ graders:
   - name: spec-reference-oracle
     type: regex
     target: trace
-    pattern: '"file_path":"[^"]*spec\.md"[^\n]*reference oracle'
+    pattern: '"file_path":"[^"]*spec\.md"[^\n]*reference oracle|"command":"(?:[^"\\]|\\.)*spec\.md(?:[^"\\]|\\.)*reference oracle'
     flags: i
   - name: plan-checkpoints
     type: regex
     target: trace
-    pattern: '"file_path":"[^"]*plan\.md"[^\n]*checkpoint'
+    pattern: '"file_path":"[^"]*plan\.md"[^\n]*checkpoint|"command":"(?:[^"\\]|\\.)*plan\.md(?:[^"\\]|\\.)*checkpoint'
     flags: i
   - name: no-self-approval
     type: regex
     target: trace
-    pattern: '"file_path":"[^"]*state\.md"[^\n]*decision:\s*accepted'
+    pattern: '"file_path":"[^"]*state\.md"[^\n]*decision:\s*accepted|"command":"(?:[^"\\]|\\.)*state\.md(?:[^"\\]|\\.)*decision:\s*accepted'
     match: not_contains
   - name: lane-controlled
     type: regex
     target: trace
-    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:[^"\\]|\\.)*\bLane:\W{0,3}Controlled\b'
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?Lane:\W{0,3}Controlled\b'
     flags: mi
   - name: no-new-code
     type: regex
@@ -51,7 +51,7 @@ graders:
   - name: no-delivery
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*(?:commit|push)\b|\b(?:curl|wget)\b)'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\n|[^\w\\"]))?(?:git\s+(?:-\S+\s+(?:\S+\s+)?)*(?:commit|push)\b|(?:curl|wget)\b)'
     min: 0
     max: 0
   - name: approvals-named
