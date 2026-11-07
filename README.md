@@ -132,7 +132,7 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Follow [Semantic Versioning 2.0.0](https://semver.org/) using the [public API and release policy](docs/versioning.md). Run `python scripts/check_version.py` to check version syntax, manifest alignment, and the current changelog entry; CI runs the same check. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
-Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
+Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. On Claude Code, `claude plugin eval` runs 15 of the 17 behavior cases (those in `evals/`) with one command. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
 
 ## License and acknowledgments
 

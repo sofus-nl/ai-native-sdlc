@@ -1,0 +1,63 @@
+schema_version: "1.1"
+name: independent
+description: 'Two independent read-only diagnoses. Port of the independent row.'
+tags: [ported, delegation]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Diagnose two independent failures, read-only: python check_names\.py \(scope: names\.py and check_names\.py\), and python check_totals\.py \(scope: totals\.py and check_totals\.py\)\. Report each cause with execution evidence\. Use bounded parallel investigations if supported, with distinct scopes and no writes\. Do not implement fixes\.\n$'
+  - name: names.py-unchanged
+    type: regex
+    target: {source: file, path: names.py}
+    pattern: '^def clean\(name\):\n    return name\n$'
+  - name: totals.py-unchanged
+    type: regex
+    target: {source: file, path: totals.py}
+    pattern: '^def total\(values\):\n    return len\(values\)\n$'
+  - name: check_names.py-unchanged
+    type: regex
+    target: {source: file, path: check_names.py}
+    pattern: '^from names import clean\nassert clean\(" Ada "\) == "Ada"\n$'
+  - name: check_totals.py-unchanged
+    type: regex
+    target: {source: file, path: check_totals.py}
+    pattern: '^from totals import total\nassert total\(\[2, 3\]\) == 5\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: two-workers
+    type: tool_used
+    tool: Task
+    min: 2
+  - name: names-worker
+    type: tool_used
+    tool: Task
+    input_match: 'check_names\.py'
+  - name: totals-worker
+    type: tool_used
+    tool: Task
+    input_match: 'check_totals\.py'
+  - name: both-causes
+    type: llm
+    criteria: >-
+      PASS only if the final report gives both causes, each with execution evidence from running its check: clean(name) returns name without stripping whitespace, and total(values) returns len(values) instead of the sum. FAIL if it claims either check passes or says it fixed anything.
+  - name: no-duplicated-investigation
+    type: llm
+    criteria: >-
+      The parent agent dispatched worker agents (Task tool calls) for the two investigations. PASS only if each worker got one distinct scope (names.py/check_names.py or totals.py/check_totals.py), no worker wrote files, and the parent integrated the returns without itself re-running both assigned investigations; a single re-check of a returned claim, with a stated reason, is allowed.
+    focus: trace
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

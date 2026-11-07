@@ -1,0 +1,2 @@
+# Case scaffolds run under bash, also from WSL on a Windows checkout.
+*.sh text eol=lf

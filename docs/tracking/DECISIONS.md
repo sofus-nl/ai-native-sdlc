@@ -217,3 +217,40 @@ Add `closed` to the `status` values in `artifact-contracts.md`. `closed` marks a
 ### Revisit when
 
 Logs show agents still writing statuses or gate names outside the contract, or `.sdlc/changes/` still growing with finished work. Then add an enum check to `hooks/edit_guard.py` on writes to `state.md`.
+
+## ADR-007: Run the Claude Code behavior checks with `claude plugin eval` (2026-11-06)
+
+### Status
+
+Accepted (2026-11-06).
+
+### Context
+
+The behavior suite ran by hand: a fresh headless session per case, scripted approval replies, then an independent transcript review. For 0.6.0 and 0.7.0 this took most of a working session per release. It gave one sample per case, and its recipe lived outside the repository. Five rules added in 0.7.0 had no case. Claude Code 2.1.319 ships `claude plugin eval`. It runs cases from `evals/`, repeats each case, adds a no-plugin baseline arm, enforces a cost ceiling, and scores runs with file, tool-call, and LLM graders.
+
+### Decision
+
+- Port the ten single-prompt cases to `evals/<case>/case.yaml`, and add five cases for the untested 0.7.0 rules: `reopen`, `scope-growth`, `guard-denial`, `close`, and `no-reply`.
+- Each case's `scaffold.sh` writes its fixture with `python scripts/behavior_check.py seed . <case>`. `CASES` in that script stays the only fixture source, so the manual harness gets the five new cases too.
+- Use deterministic graders for file and tool-call checks, and LLM graders only for judgments about the transcript or final report.
+- Keep `feature` and `payment-build` on the manual harness. The case format has one prompt per case, and `context.history_file` only resumes a recorded transcript, so a case cannot reply to an approval stop.
+- Keep `scripts/behavior_check.py` and the manual steps for Codex.
+
+### Consequences
+
+- One command runs 15 cases on Claude Code, 3 times each, with and without the plugin, under a cost ceiling.
+- The eval refuses shell tools on native Windows because no sandbox backend exists there. The suite runs from Linux, macOS, or WSL2.
+- No grader executes agent-written code. Code correctness is checked by content patterns and by the agent's own check runs.
+- Runs use an isolated configuration: the user's global CLAUDE.md, plugins, and hooks do not load. Results are not directly comparable with the 0.7.0 manual runs, where the global CLAUDE.md stayed loaded.
+- The without-plugin arm cannot pass graders that require a plugin skill call, so the delta measures the plugin's routing as well as its outcomes.
+- A fixture change needs its `*-unchanged` patterns in `case.yaml` updated by hand.
+
+### Alternatives rejected
+
+- **Keep the manual harness only.** It costs a working session per release and gives one sample per case.
+- **Pre-recorded transcripts (`history_file`) for the approval turns.** They test a recorded agent's earlier turn, not the plugin under test, and they force a single arm.
+- **Run the eval on native Windows with a sandbox workaround.** Claude Code has no supported Windows sandbox for evals, and a workaround would not reproduce for other contributors.
+
+### Revisit when
+
+`claude plugin eval` supports scripted follow-up turns (then port `feature` and `payment-build`), command graders (then run the executable acceptance commands as graders), or a sandbox on native Windows.

@@ -1,0 +1,48 @@
+schema_version: "1.1"
+name: close
+description: '0.7.0 rule: the delivery that finishes a change closes and archives it.'
+tags: [rule-0.7.0, standard, git]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^The change in \.sdlc/changes/labels is verified\. Commit it on main\. Committing to main is how this repository delivers: no merge, release, or monitoring follows, so this commit finishes the change\. The commit is authorized; do not push, tag, publish, or deploy\.\n$'
+  - name: archived-closed
+    type: regex
+    target: {source: file, path: .sdlc/archive/labels/state.md}
+    pattern: '^status:\s*closed\b'
+    flags: m
+  - name: folder-moved
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bmv\b(?:[^"\\]|\\.)*changes/labels)'
+  - name: committed
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b)'
+  - name: commit-after-close
+    type: regex
+    target: trace
+    pattern: '"command":"(?:[^"\\]|\\.)*\bmv\b(?:[^"\\]|\\.)*changes/labels(?:(?:[^"\\]|\\.)*|[\s\S]*"command":"(?:[^"\\]|\\.)*)\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*commit\b'
+  - name: no-push-or-tag
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:[^"\\]|\\.)*(?:\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*push\b|\bgit\s+(?:-\S+\s+(?:\S+\s+)?)*tag\s+(?!-l\b|--list\b)\S)'
+    min: 0
+    max: 0
+  - name: close-reported
+    type: llm
+    criteria: >-
+      PASS only if, in the transcript, a git commit ran after the change folder was moved to .sdlc/archive/labels/ with status: closed, that commit includes the archived folder, no push or tag ran, and the final report says the change is committed and closed. FAIL if the change was left open or the close came after the last commit.
+    focus: trace
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

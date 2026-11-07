@@ -1,0 +1,37 @@
+schema_version: "1.1"
+name: cost-retry
+description: 'Read-only retry-cost review. Port of the cost-retry row.'
+tags: [ported, read-only]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Read RUNS\.md\. This is a read-only retry-cost review\. Compare full observed costs, assess what the records establish about model selection, and state the next action\. Do not make real model calls, retry, or edit files\.\n$'
+  - name: runs.md-unchanged
+    type: regex
+    target: {source: file, path: RUNS.md}
+    pattern: '^Direct baseline: default, passed; cost \$0\.05\.\nCandidate attempt 1: default, failed before task execution with missing python environment error; cost \$0\.03\.\nCandidate attempt 2: default, passed after environment repair; cost \$0\.03\.\nCapability result: no model capability comparison was run\.\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: totals-stated
+    type: regex
+    pattern: '(?=[\s\S]*\$0\.06)(?=[\s\S]*\$0\.05)'
+  - name: cost-assessment
+    type: llm
+    criteria: >-
+      PASS only if the final report counts both candidate attempts, so the candidate total is $0.06 against $0.05 for the direct run; says attempt 1 failed from a missing python environment, an environment failure and not a model capability result; and says these same-model records cannot pick a model-selection winner or show savings that generalize. FAIL if it drops the failed attempt's cost, asks for a stronger model, or claims qualification or savings.
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

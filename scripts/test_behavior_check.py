@@ -3,20 +3,33 @@
 import contextlib
 import io
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
-from behavior_check import BASE, CASES, CURRENT, PAYMENTS, check
+from behavior_check import BASE, CASES, CURRENT, PAYMENTS, check, seed, write
 
 
 class BehaviorCheckTest(unittest.TestCase):
+    def test_seed_leaves_the_change_uncommitted_on_main(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            seed('close', folder)
+            git = lambda *args: subprocess.run(['git', *args], cwd=folder, capture_output=True, text=True,
+                                               check=True).stdout
+            self.assertEqual(git('branch', '--show-current').strip(), 'main')
+            self.assertEqual(git('rev-list', '--count', 'HEAD').strip(), '1')
+            self.assertEqual(sorted(git('status', '--porcelain').splitlines()),
+                             [' M labels.py', '?? .sdlc/', '?? check.py'])
+            self.assertEqual((folder / '.sdlc/changes/labels/state.md').read_bytes().decode(),
+                             CASES['close']['.sdlc/changes/labels/state.md'])
+
     def test_accepts_expected_files_and_rejects_regressions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name, files in CASES.items():
                 (root / name).mkdir()
-                for filename, content in files.items():
-                    (root / name / filename).write_text(content, encoding='utf-8')
+                write(root / name, files)
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertTrue(check(root))
                 (root / 'typo' / 'README.md').write_text(
