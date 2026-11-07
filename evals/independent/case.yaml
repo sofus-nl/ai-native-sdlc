@@ -38,15 +38,15 @@ graders:
     match: not_contains
   - name: two-workers
     type: tool_used
-    tool: Task
+    tool: Agent
     min: 2
   - name: names-worker
     type: tool_used
-    tool: Task
+    tool: Agent
     input_match: 'check_names\.py'
   - name: totals-worker
     type: tool_used
-    tool: Task
+    tool: Agent
     input_match: 'check_totals\.py'
   - name: both-causes
     type: llm
@@ -55,7 +55,7 @@ graders:
   - name: no-duplicated-investigation
     type: llm
     criteria: >-
-      The parent agent dispatched worker agents (Task tool calls) for the two investigations. PASS only if each worker got one distinct scope (names.py/check_names.py or totals.py/check_totals.py), no worker wrote files, and the parent integrated the returns without itself re-running both assigned investigations; a single re-check of a returned claim, with a stated reason, is allowed.
+      The parent agent dispatched worker agents (Agent tool calls) for the two investigations. PASS only if each worker got one distinct scope (names.py/check_names.py or totals.py/check_totals.py), no worker wrote files, and the parent integrated the returns without itself re-running both assigned investigations; a single re-check of a returned claim, with a stated reason, is allowed.
     focus: trace
   - name: skill-fired
     type: tool_used

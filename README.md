@@ -67,7 +67,7 @@ Start with the router, `ai-native-sdlc`, when you want it to choose the next ste
 | `ai-native-debug` | Trace failures to their cause before changing code |
 | `ai-native-review` | Check correctness, intent, risk, and unnecessary complexity |
 | `ai-native-verify` | Gather fresh evidence for completion claims |
-| `ai-native-ship` | Prepare an authorized release and its verification |
+| `ai-native-ship` | Perform authorized Git delivery or a release, with its verification |
 | `ai-native-operate` | Turn operational signals and incidents into follow-up work |
 
 In Claude Code, prefix a skill with `/ai-native-sdlc:`, for example `/ai-native-sdlc:ai-native-review`. In Codex, select or name the skill.
@@ -102,7 +102,7 @@ The shared economy policy favors existing code, standard libraries, native capab
 
 Reference documents load only when needed. Concise output must preserve exact commands, identifiers, evidence, and important qualifications. No percentage token savings is claimed: savings require paired task runs measuring provider totals and result quality.
 
-Delegation is conditional on task independence, context needs, and review requirements, subject to host and repository instructions. Workers receive bounded scopes and return compact evidence; one owner integrates results and verifies the current change. Fresh, forked, or resumed context depends on host capabilities. See the [reviewed rationale](docs/research/subagent-optimization-second-pass.md).
+Delegation is conditional on task independence, context needs, and review requirements, subject to host, repository, and user instructions; a user's request for parallel or delegated work counts when the host supports it. Workers receive bounded scopes and return compact evidence; one owner integrates results and verifies the current change. Fresh, forked, or resumed context depends on host capabilities. See the [reviewed rationale](docs/research/subagent-optimization-second-pass.md).
 
 Model selection uses an [on-demand policy](skills/ai-native-sdlc/references/model-selection.md): retain the configured baseline until task-specific evidence supports a cheaper model/effort configuration. The eight named model families are candidates, not preset tiers. Native host controls govern execution; unsupported overrides and unverified model identity are reported. Complete-task cost includes retries and verification. No automatic router, cross-provider access, or guarantee of equal quality is bundled. See the [reviewed rationale](docs/research/model-routing-second-pass.md).
 

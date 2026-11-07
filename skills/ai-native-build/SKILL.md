@@ -16,7 +16,7 @@ Stop before editing when the selected lane's required artifact or approval is ab
    1. Read the human feedback recorded in `state.md`.
    2. Execute the checkpoint's dependency waves. Before delegating, apply the decision and handoff contract in `../ai-native-sdlc/references/economy.md`. Keep one integration owner; do not duplicate assigned investigations. Independently inspect returned diffs against current state, including late results, before integration.
    3. For behavior changes, establish proof before implementation:
-      - bug: reproduce and add the smallest regression check that fails for the right reason;
+      - bug: reproduce with an existing failing check, or add the smallest regression check that fails for the right reason;
       - feature: add a focused acceptance-level check first when the repository supports it;
       - unsuitable test-first work such as generated files or pure configuration: state the alternative observable check;
       - Controlled: a separate test-author worker writes the checks from the spec and Reference oracle when the host supports it. The implementer does not edit or dismiss those checks; disputes go to the reviewers or the human.

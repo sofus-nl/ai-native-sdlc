@@ -266,3 +266,42 @@ The behavior suite ran by hand: a fresh headless session per case, scripted appr
 ### Revisit when
 
 `claude plugin eval` supports scripted follow-up turns (then port `feature` and `payment-build`), command graders (then run the executable acceptance commands as graders), or a sandbox on native Windows.
+
+## ADR-008: Route every delivery of a verified change through ship, and honor delegation requests (2026-11-07)
+
+### Status
+
+Accepted (2026-11-07).
+
+### Context
+
+The first full `claude plugin eval` run (ADR-007) on 0.7.1 found rule breaks in six cases, and the traces showed one cause each:
+
+- `close`: every run that left the change open had committed straight from the router. The router's invariants required `ai-native-ship` only for a merge or release, although its routing list sent any authorized Git delivery there, so a plain commit could skip the close rule.
+- `independent`: the router's "Keep small, tightly coupled work local" and "For Fast work, stay inline" won over the user's explicit request for parallel investigation.
+- `model-override`: the agent treated controls read from a file as host state, or told the user to change host settings.
+- `reopen`, `payment`, and `scope-growth`: the wording stated the rules without an order, or without naming every approval at the point where the report is written.
+
+### Decision
+
+- `ai-native-ship` handles every authorized commit, push, PR, merge into its target, or release of a verified Standard or Controlled change. Checkpoint commits during a build still follow `checkpoints.md` inside `ai-native-build`.
+- A delivery finishes a verified change when no merge, release, or monitoring follows it, including a final commit to the delivery branch.
+- A user's request for parallel or delegated work is an instruction to delegate when the host supports it, whatever the task size. Scopes that share files or mutable state stay sequential. Without such a request, small work stays local.
+- A code change after `status: verified` overrides the stored `next_action`: set `status: building` before the first code edit or merge, then go through `ai-native-build`.
+- A report that stops at a gate names each missing approval by gate and artifact, and any missing implementation or delivery authorization. Approvals recorded before a lane raise do not count for the raised lane.
+- Model controls read from a supplied record are that record's claims and do not show that a described run took place; the next action comes from the review, not from changing host settings.
+
+### Consequences
+
+- A verified Standard or Controlled change that the user asks to commit now loads the ship skill, which adds one skill call to that commit.
+- Small read-only tasks that ask for parallel work now cost worker handoffs. The user asked for that cost.
+- These are compatible fixes of existing rules, so the release is a patch: `0.7.2`.
+
+### Alternatives rejected
+
+- **Check the close in the guard hook.** The hook sees file writes, not whether a commit finishes the delivery.
+- **Drop delegation from the `independent` case.** The case follows an explicit user request; the router, not the case, was wrong.
+
+### Revisit when
+
+The next `claude plugin eval` run still fails any of these six cases. Then read those traces before changing the wording again.

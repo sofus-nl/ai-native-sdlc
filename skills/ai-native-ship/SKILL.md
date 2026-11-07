@@ -18,7 +18,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 
 Perform only the steps applicable to the authorized boundary; stop when that boundary is complete.
 
-1. Create the smallest coherent commit only when authorized. When this delivery finishes the change (released with no monitoring left, or merged with no later release planned), make its last commit before the merge or release close the change: set `status: closed` and move `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/`, or remove the folder only where repository instructions explicitly say so. Without an authorized commit, report the close as the next action.
+1. Create the smallest coherent commit only when authorized. When this delivery finishes a change at `status: verified`, meaning no later merge, release, or monitoring is planned for it (a merge with no later release, a release with no monitoring left, or a commit to the delivery branch with no merge, release, or monitoring after it), make its last commit before any merge or release close the change: set `status: closed` and move `.sdlc/changes/<slug>/` to `.sdlc/archive/<slug>/`, or remove the folder only where repository instructions explicitly say so. Without an authorized commit, report the close as the next action.
 2. Push or open/update a PR only when authorized. The PR must link intent/spec/plan where used, summarize risk, list proof and limitations, and state rollback.
 3. Watch required checks and review comments. Fix verified findings through the normal build-review-verify loop; do not blindly satisfy comments.
 4. Keep author, reviewer, and approver distinct for Controlled work. Green automation never grants production authority.
