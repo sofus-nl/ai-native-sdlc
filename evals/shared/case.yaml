@@ -1,0 +1,43 @@
+schema_version: "1.1"
+name: shared
+description: 'Two changes to one shared file. Port of the shared row.'
+tags: [ported, delegation]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: both-values
+    type: regex
+    target: {source: file, path: settings.py}
+    pattern: '(?=[\s\S]*"retries":\s*3\b)(?=[\s\S]*"timeout":\s*30\b)'
+  - name: check.py-unchanged
+    type: regex
+    target: {source: file, path: check.py}
+    pattern: '^from settings import limits\nassert limits\(\) == \{"retries": 3, "timeout": 30\}\n$'
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Make two requested changes: retries must be 3, and timeout must be 30\. Both are returned by limits\(\) in settings\.py\. Coordinate ownership of this shared file; run python check\.py on the integrated result\. Keep check\.py and TASK\.md unchanged\.\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: ran-check
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+(?:\w\S*\s+)?)*(?:[^"\\\s]*/)?check\.py)'
+  - name: one-writer-at-a-time
+    type: llm
+    criteria: >-
+      PASS only if settings.py was never edited by two agents at the same time (one writer, or sequential writers where each later writer started from the current file) and the last python check.py run came after the last edit of settings.py and passed.
+    focus: trace
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

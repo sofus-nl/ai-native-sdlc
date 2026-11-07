@@ -1,0 +1,45 @@
+schema_version: "1.1"
+name: typo
+description: 'Fast typo fix. Port of the typo row in docs/behavior-checks.md.'
+tags: [ported, fast]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: readme-fixed
+    type: regex
+    target: {source: file, path: README.md}
+    pattern: '^# Sample\n\nWelcome to the sample\.\n$'
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Fix Welcom to Welcome in README\.md\. Nothing else is needed\.\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: lane-fast
+    type: regex
+    target: trace
+    pattern: '^\{"type":"assistant".*"type":"text","text":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?Lane:\W{0,3}Fast\b'
+    flags: mi
+  - name: no-delegation
+    type: tool_used
+    tool: Task
+    min: 0
+    max: 0
+  - name: checked-result
+    type: llm
+    criteria: >-
+      PASS only if, after editing README.md, the agent checked the result before its final report (a diff, a re-read of the file, or a search for the corrected text) and the final report states what that check showed. FAIL if the agent changed anything other than the spelling in README.md.
+    focus: trace
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

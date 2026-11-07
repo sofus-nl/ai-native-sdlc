@@ -1,0 +1,42 @@
+schema_version: "1.1"
+name: done
+description: 'Acceptance already met; verify and stop. Port of the done row.'
+tags: [ported, fast]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Ensure label strips surrounding spaces and preserves empty input\. Run python check\.py to verify\. If acceptance is met, stop; no additional features or refactoring are requested\.\n$'
+  - name: labels.py-unchanged
+    type: regex
+    target: {source: file, path: labels.py}
+    pattern: '^def label\(name\):\n    return name\.strip\(\)\n$'
+  - name: check.py-unchanged
+    type: regex
+    target: {source: file, path: check.py}
+    pattern: '^from labels import label\nassert label\(" Ada "\) == "Ada"\nassert label\(""\) == ""\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: ran-check
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+(?:\w\S*\s+)?)*(?:[^"\\\s]*/)?check\.py)'
+  - name: stopped-after-proof
+    type: llm
+    criteria: >-
+      PASS only if the final report says python check.py passed in this session, says acceptance (stripping surrounding spaces, preserving empty input) is met, and stops without making new features, refactoring, or edits.
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'

@@ -1,0 +1,52 @@
+schema_version: "1.1"
+name: failure
+description: 'Unknown-cause failure, diagnose only. Port of the failure row.'
+tags: [ported, debug]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Use ai-native-sdlc to complete TASK.md in this directory.
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Edit, Write, Bash]
+graders:
+  - name: task.md-unchanged
+    type: regex
+    target: {source: file, path: TASK.md}
+    pattern: '^Investigate why python check\.py fails\. The cause is unknown\. Diagnose only and give evidence before proposing a fix; do not edit files\.\n$'
+  - name: labels.py-unchanged
+    type: regex
+    target: {source: file, path: labels.py}
+    pattern: '^def label\(name\):\n    return name\n$'
+  - name: check.py-unchanged
+    type: regex
+    target: {source: file, path: check.py}
+    pattern: '^from labels import label\nassert label\(" Ada "\) == "Ada"\n$'
+  - name: no-new-files
+    type: regex
+    target: files
+    pattern: '^(?!.*__pycache__/).+$'
+    flags: m
+    match: not_contains
+  - name: routed-to-debug
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-debug'
+    arm: both
+  - name: ran-failing-check
+    type: tool_used
+    tool: Bash
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:python3?\s+(?:-\S+\s+)*(?:\./)?check\.py)'
+  - name: inspected-helper
+    type: regex
+    target: trace
+    pattern: '^\{"type":"assistant".*"type":"tool_use".*"input":\{[^\n]*labels\.py'
+    flags: m
+  - name: diagnosis
+    type: llm
+    criteria: >-
+      PASS only if the final report identifies that label(name) returns name unchanged (it does not strip surrounding whitespace) as the cause, cites the failing python check.py run (the AssertionError) as evidence, does not claim the check passed, and does not claim a fix was applied.
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: 'ai-native-sdlc'
