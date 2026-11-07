@@ -2,6 +2,11 @@
 
 ## 0.7.2 - Unreleased
 
+- Verification so far: `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 3 runs per arm. No permissions were bypassed.
+  - Full suite on the wording before the last model-selection sentence: 13 of 15 cases passed every with-plugin run, against 8 of 15 on 0.7.1. The mean with-plugin score rose from 0.93 to 0.99. No case scored lower. Cost $13.08.
+  - `close`, `independent`, `payment`, and `scope-growth` went to 3/3. `reopen` went to 2/3: in the failing run the agent re-ran `python check.py` in the same command as its last edit to `labels.py`, and all three judge votes still failed it. `model-override` went to 1/3.
+  - After the model-selection sentence was tightened, the three read-only cases ran 6 times each: `model-override` 5/6, `qualification` 6/6, `cost-retry` 4/6. The two failing `cost-retry` reports count both attempts and name the environment failure; one got a split vote, the other inferred that the candidate differs from the baseline although both runs say `default`. `cost-retry` passed 3/3 in the full suite.
+  - Not run yet: Codex, and `feature` and `payment-build` on the manual harness. This entry stays unreleased until they run.
 - Changed skill wording for the rule breaks the first `claude plugin eval` run found (ADR-008). Wording only; the hook is unchanged.
   - Router, verify, and ship: `ai-native-ship` handles every authorized commit, push, PR, merge into its target, or release of a verified Standard or Controlled change, not only merges and releases. A delivery finishes a verified change when no merge, release, or monitoring follows it, which includes a final commit to the delivery branch. Every `close` run that left the change open had committed straight from the router without invoking ship.
   - Router and build: a code change after `status: verified` overrides the stored `next_action`. Before the first code edit or merge, the agent sets `status: building`, then invokes `ai-native-build`, which routes the delta through review and verify before any completion claim. A bug fix may use an existing failing check as its regression proof. Failing `reopen` runs edited first, set `status: reviewing`, or ran review without verify.
