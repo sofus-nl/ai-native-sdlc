@@ -289,7 +289,7 @@ The first full `claude plugin eval` run (ADR-007) on 0.7.1 found rule breaks in 
 - A user's request for parallel or delegated work is an instruction to delegate when the host supports it, whatever the task size. Scopes that share files or mutable state stay sequential. Without such a request, small work stays local.
 - A code change after `status: verified` overrides the stored `next_action`: set `status: building` before the first code edit or merge, then go through `ai-native-build`.
 - A report that stops at a gate names each missing approval by gate and artifact, and any missing implementation or delivery authorization. Approvals recorded before a lane raise do not count for the raised lane.
-- Model controls read from a supplied record are that record's claims; the agent recommends confirming the real host controls.
+- Model controls read from a supplied record are that record's claims and do not show that a described run took place; the next action comes from the review, not from changing host settings.
 
 ### Consequences
 
