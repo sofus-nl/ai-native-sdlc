@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.3 - Unreleased
+## 0.7.3 - 2026-11-08
 
 - Verification: hook-only release, so the behavior suite did not run. `scripts/test_edit_guard.py` covers the change below, including the commands that must still be denied.
 - Fixed a false denial. The hook denied a lifecycle write after a chain such as `cd "<project>" && mkdir -p .sdlc/changes/<slug> && cd .sdlc/changes/<slug> && D=$(date +%F) && cat > spec.md <<'EOF'`, which the 0.7.2 manual-harness run hit. The cause was the `$(date +%F)` between the two `cd`s, not the absolute `cd`: any parenthesis made the hook stop following directory changes, so `spec.md` counted as a project file. A `$(...)` with no `cd` and no nested parenthesis in it now keeps the following on, since it cannot change the shell's directory; its inner commands are still scanned for writes.
