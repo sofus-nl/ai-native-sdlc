@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.3 - Unreleased
+
+- Verification: hook-only release, so the behavior suite did not run. `scripts/test_edit_guard.py` covers the change below, including the commands that must still be denied.
+- Fixed a false denial. The hook denied a lifecycle write after a chain such as `cd "<project>" && mkdir -p .sdlc/changes/<slug> && cd .sdlc/changes/<slug> && D=$(date +%F) && cat > spec.md <<'EOF'`, which the 0.7.2 manual-harness run hit. The cause was the `$(date +%F)` between the two `cd`s, not the absolute `cd`: any parenthesis made the hook stop following directory changes, so `spec.md` counted as a project file. A `$(...)` with no `cd` and no nested parenthesis in it now keeps the following on, since it cannot change the shell's directory; its inner commands are still scanned for writes.
+- Unchanged: a `cd` in a subshell, a group, a nested shell, or a `$(...)`, an absolute `cd` outside the project, `.sdlc/../` traversal, and a write outside `.sdlc/` at the end of the same chain are all still counted as project writes.
+- Known limit: a `$(...)` inside quotes (`D="$(date +%F)"`) still stops the following, so a lifecycle write after it in the same command is denied. Write the substitution unquoted.
+- Added tests for an absolute `cd` to the project root followed by a relative `cd` under `.sdlc/`, with and without commands between; both already passed on 0.7.2.
+
 ## 0.7.2 - 2026-11-07
 
 - Verification: `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 3 runs per arm. No permissions were bypassed.
