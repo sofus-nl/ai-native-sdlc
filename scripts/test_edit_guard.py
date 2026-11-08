@@ -215,6 +215,14 @@ class EditGuardTest(unittest.TestCase):
                 "mkdir -p .sdlc/changes/x && cd .sdlc/changes/x && cat > intent.md <<'EOF'\n# Intent\nEOF\ncat > spec.md <<'EOF'\n# Spec\nEOF\nls",
                 f'cd "{inside}/.sdlc/changes/x" && sed -i \'s/pytest/unittest/\' plan.md && grep -n unittest plan.md',
                 f'cd {outside} && python -m pytest -q > run.log',
+                # An absolute cd to the project root, other commands, then a relative cd into the change folder.
+                f'cd "{inside}" && cd .sdlc/changes/x && cat > spec.md <<EOF\n# Spec\nEOF',
+                f'cd "{inside}" && ls && cd .sdlc/changes/x && cat > spec.md <<EOF\n# Spec\nEOF',
+                # A command substitution that changes no directory leaves the cd following alone.
+                f'cd "{inside}" && mkdir -p .sdlc/changes/x && cd .sdlc/changes/x && D=$(date +%Y-%m-%d) &&\n'
+                f'cat > spec.md <<\'EOF\'\n# Spec $D\nEOF\ncat > plan.md <<\'EOF\'\n# Plan\nEOF',
+                f'cd {inside} && D=$(date +%F) && cd .sdlc/changes/x && cat > spec.md <<EOF\n# Spec\nEOF',
+                "cd .sdlc/changes/x && D=$(date +%F); cat > spec.md <<EOF\n# Spec\nEOF",
                 # Closing a change: every target is under .sdlc/.
                 'git mv .sdlc/changes/x .sdlc/archive/x',
                 'mkdir -p .sdlc/archive && mv .sdlc/changes/x .sdlc/archive/x',
@@ -310,6 +318,17 @@ class EditGuardTest(unittest.TestCase):
                 'cd .sdlc && bash -c "cd .. && rm -rf src"',
                 'Push-Location src; Set-Location .sdlc; Pop-Location; Remove-Item a.py',
                 'cd .sdlc && git -C .. rm src/a.py',
+                # The same chain with a command substitution is still checked: the write lands outside .sdlc/, the
+                # directory is outside the project, a cd runs in a subshell or substitution, or the path climbs out of .sdlc/.
+                f'cd "{inside}" && ls && cd .sdlc/changes/x && D=$(date +%F) && cat > ../../../src/app.py <<EOF\nx\nEOF',
+                f'cd "{inside}" && D=$(date +%F) && echo x > src/app.py',
+                'cd /srv/other && ls && cd src && D=$(date +%F) && echo x > app.py',
+                f'cd "{inside}" && (cd .sdlc/changes/x && ls); D=$(date +%F); echo x > app.py',
+                f'cd "{inside}" && echo $(cd .sdlc/changes/x && pwd); D=$(date +%F); echo x > app.py',
+                'cd .sdlc/changes/x && D=$(echo hi > ../../../src/a.py)',
+                f'cd "{inside}" && D=$(date +%F) && cd .sdlc/../src && echo x > app.py',
+                f'cd "{inside}" && D=$(date +%F) && echo x > .sdlc/../src/app.py',
+                f'cd "{inside}" && ls && cd .sdlc/changes/x && cd ../../.. && echo x > app.py',
                 # A backslash before a quote is not an escape in PowerShell or in bash single quotes.
                 'Get-ChildItem "C:\\proj\\" ; Remove-Item -Recurse src ; Get-ChildItem "C:\\tmp\\"',
                 "echo 'x\\' ; rm -rf src ; echo 'y\\'",

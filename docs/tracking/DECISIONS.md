@@ -140,6 +140,10 @@ A replay of about 15,000 shell commands from private session logs showed that th
 
 Deferred: an environment variable that lets the human switch the guard off when it is wrong. It adds to the documented interface, so it needs a minor version.
 
+### Amendment (0.7.3, 2026-11-08)
+
+A manual-harness run of 0.7.2 showed a false denial of a lifecycle write after `cd <project> && ... && cd .sdlc/changes/<slug> && D=$(date +%F) && cat > spec.md`. The cause was the `$(date +%F)`, not the absolute `cd`: any parenthesis stopped `cd` following. A `$(...)` that holds no directory change and no nested parenthesis now leaves the following on, because it cannot move the shell; its inner commands are still scanned like any segment. Every other subshell, group, and nested shell still stops it, and so does a `$(...)` in quotes.
+
 ## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
 
 ### Status

@@ -88,8 +88,10 @@ def shellWritesOutsideSdlc(aCommand, aRoots=()):
     runs = stray or NESTED.search(bare) or CODE.search(outer) or re.search(r'[\'"]', bare) or any('$(' in q or '`' in q for q in quoted)
     segments = re.split(r'&&|\|\||[;&|\n]', outer if runs else bare)
     # Relative targets follow a cd only while every directory change is a plain one at the start of a segment and
-    # nothing runs in a subshell, a group, or another program.
-    track = not runs and not re.search(r'[(){}`]', bare) and all(not CD.search(s) or CD.match(s.lstrip()) for s in segments)
+    # nothing runs in a subshell, a group, or another program. A `$(...)` with no directory change in it leaves the
+    # directory as it is (`D=$(date +%F)`), and its inner commands are still scanned as segments.
+    flat = re.sub(r'\$\(([^()`]*)\)', lambda m: m.group() if CD.search(m.group(1)) else '', bare)
+    track = not runs and not re.search(r'[(){}`]', flat) and all(not CD.search(s) or CD.match(s.lstrip()) for s in segments)
     here = ''
 
     def unquote(aToken):
