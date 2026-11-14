@@ -173,6 +173,32 @@ Rejected: more wording. A sentence added to the review skill for these defects w
 
 Rejected: checking at the end of the turn. The claim is already written by then, and a second stop always passes.
 
+### Amendment (0.9.0, 2026-11-14)
+
+Two reviews of 0.8.0 and a probe of Claude Code 2.1.319 showed that the transcript is the wrong source for the verify check. Sub-agent tool calls are not written to the parent transcript, so a build worker's code change was never seen. The transcript is written after the hook runs for calls in the same message. Which shell command wrote code was a guess from its text. Anthropic's hooks reference says the transcript "may lag the in-memory conversation", and OpenAI's says the format "isn't a stable interface for hooks".
+
+- **The hook keeps its own record.** It runs after each `Skill` call and for a typed skill command, and appends the skill's name and a fingerprint of the project files to a file per session in the plugin's data folder. Only skills of this plugin that the main agent invoked are recorded. The probe showed that this event arrives before the next tool call starts, also within one message.
+- **"Did code change" is a comparison of files, not of commands.** The fingerprint holds a content hash per file outside `.sdlc/` that Git does not ignore. The check asks whether the last verify started from the files the last review saw. The first draft hashed the difference from the last commit; an independent review showed that any commit then made changed code look reviewed, and the build skill commits each checkpoint.
+- **A denial names the changed files.** Output that a test run rewrites would otherwise deny every round with no way for the agent to find the cause.
+- **A claim counts once the state file shows it.** The hook notes a `status: verified` write it let through and records it at the next call if the file then holds that status.
+- **Still from the transcript:** the lane stated in chat, whether the session invoked the plugin, and which `state.md` is active. No event carries the assistant's text before a tool call.
+- **Failure mode unchanged:** an error in the new events blocks nothing. If the data folder cannot be written, the verify check is off.
+
+**Throwaway files (same release).** Session logs from 15 October to 14 November held 141 denials. Eighteen were probe, benchmark, or repro scripts, and 12 of the 17 in real projects were writes into Claude's scratch folder under the system temp folder. The 0.7.1 rule let only a shell redirect into temp through. Agents answered by putting probes under `.sdlc/changes/<slug>/probes/` (one repository now tracks 114 such files), by running scripts inline, or by stating the Fast lane.
+
+- **Rule:** a file under the system temp folder, or a file Git ignores, is not project code. Every way of writing it passes before approval. A copy is checked on its destination only.
+- Measured against the same logs: the temp rule lets 14 of the 19 throwaway writes through and none of the 87 denied writes to real code.
+
+Rejected: letting any new file through that the plan does not name. It covers every probe, and also 7 of 71 denied writes to real code (new test files).
+
+Rejected: a scratch folder with a fixed name. Git's ignore rules already say which files a project does not keep.
+
+Rejected: denying on hook failure (`onFailure: "block"`), for the reasons in the 0.8.0 amendment.
+
+Rejected for now: a guard on Codex. Codex 0.167 runs plugin hooks and accepts the same denial output, and a patch arrives as text from which paths can be read. But no event tells a hook that a skill was used, so the verify check and the "session uses the plugin" test cannot be decided, and Codex skips a plugin's hooks without notice until the user trusts them, after each plugin update, and under `codex exec`. A guard that covers only the approvals gate, decided from `state.md` on disk, is possible; it is a different design and needs its own behavior runs on Codex.
+
+Known limits: see the changelog entry for 0.9.0.
+
 ## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
 
 ### Status
