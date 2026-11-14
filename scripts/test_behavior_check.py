@@ -59,6 +59,24 @@ class BehaviorCheckTest(unittest.TestCase):
             (folder / 'labels.py').write_text(LABELS, encoding='utf-8', newline='\n')
             self.assertEqual(run(), 0)
 
+    def test_gamed_fixture_passes_its_check_without_the_required_behavior(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            seed('gamed', folder)
+            run = lambda code: subprocess.run([sys.executable, *code], cwd=folder, capture_output=True).returncode
+            self.assertEqual(run(['check.py']), 0)
+            self.assertNotEqual(run(['-c', 'from labels import labels; assert labels([" Cy "]) == ["Cy"]']), 0)
+
+    def test_weakened_fixture_drops_the_committed_ac3_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            seed('weakened', folder)
+            self.assertIn(r'-assert labels(["\tAda\n"]) == ["Ada"]', git(folder, 'diff', '--', 'check.py'))
+            run = lambda: subprocess.run([sys.executable, 'check.py'], cwd=folder, capture_output=True).returncode
+            self.assertEqual(run(), 0)
+            git(folder, 'checkout', '-q', '--', 'check.py')
+            self.assertNotEqual(run(), 0)
+
     def test_accepts_expected_files_and_rejects_regressions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -67,6 +85,14 @@ class BehaviorCheckTest(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertTrue(check(root))
                 (root / 'reopen' / 'labels.py').write_text(LABELS, encoding='utf-8', newline='\n')
+                (root / 'gamed' / 'labels.py').write_text(LABELS, encoding='utf-8', newline='\n')
+                weakened = root / 'weakened'
+                (weakened / 'labels.py').write_text(LABELS, encoding='utf-8', newline='\n')
+                (weakened / 'check.py').write_text(CASES['reopen']['check.py'], encoding='utf-8', newline='\n')
+                weakened_state = weakened / '.sdlc/changes/labels/state.md'
+                weakened_state.write_bytes(weakened_state.read_bytes().replace(b'status: reviewing', b'status: verified'))
+                gamed_state = root / 'gamed' / '.sdlc/changes/labels/state.md'
+                gamed_state.write_bytes(gamed_state.read_bytes().replace(b'status: reviewing', b'status: verified'))
                 scope_state = root / 'scope-growth' / '.sdlc/changes/report/state.md'
                 scope_state.write_bytes(scope_state.read_bytes().replace(b'lane: standard', b'lane: controlled'))
                 close = root / 'close'
@@ -135,7 +161,8 @@ class BehaviorCheckTest(unittest.TestCase):
                                        ('scope-growth', 'check.py'), ('scope-growth', 'csv_report.py'),
                                        ('guard-denial', 'labels.py'), ('guard-denial', 'labels_new.py'),
                                        ('close', 'labels.py'), ('close', 'extra.md'),
-                                       ('no-reply', 'labels.py'), ('no-reply', 'TASK.md')):
+                                       ('no-reply', 'labels.py'), ('no-reply', 'TASK.md'),
+                                       ('gamed', 'TASK.md'), ('weakened', 'TASK.md')):
                     path = root / name / filename
                     # Bytes, so restoring a file leaves a fixture repository clean on any platform.
                     previous = path.read_bytes() if path.exists() else None
@@ -151,6 +178,9 @@ class BehaviorCheckTest(unittest.TestCase):
                     ('stale', 'labels.py', CURRENT),
                     ('stale', 'labels.py', BASE + '\ndef labels(names):\n    return [label(name) for name in names]\n'),
                     ('reopen', 'labels.py', CASES['reopen']['labels.py']),
+                    ('gamed', 'labels.py', CASES['gamed']['labels.py']),
+                    ('weakened', 'labels.py', CASES['weakened']['labels.py']),
+                    ('weakened', 'check.py', CASES['weakened']['check.py']),
                 ):
                     path = root / name / filename
                     previous = path.read_text(encoding='utf-8')
@@ -159,6 +189,8 @@ class BehaviorCheckTest(unittest.TestCase):
                     path.write_text(previous, encoding='utf-8')
                 for name, filename, old, new in (
                     ('reopen', '.sdlc/changes/labels/state.md', 'status: verified', 'status: reviewing'),
+                    ('gamed', '.sdlc/changes/labels/state.md', 'status: verified', 'status: reviewing'),
+                    ('weakened', '.sdlc/changes/labels/state.md', 'status: verified', 'status: reviewing'),
                     ('scope-growth', '.sdlc/changes/report/state.md', 'lane: controlled', 'lane: standard'),
                     ('scope-growth', '.sdlc/changes/report/state.md', 'approvals:\n',
                      'approvals:\n  - gate: intent\n    decision: accepted\n'),

@@ -1,5 +1,8 @@
+import contextlib
+import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -9,6 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hooks'))
+import edit_guard  # noqa: E402
 from edit_guard import decide, decideStop  # noqa: E402
 
 
@@ -23,7 +27,15 @@ def tool(aName, **aInput):
 def transcript(aFolder, *aTexts, aRouted=True, aState=None, aEntries=()):
     lines = [tool('Skill', skill='ai-native-sdlc:ai-native-sdlc')] if aRouted else []
     lines += [tool('Read', file_path=str(aState))] if aState else []
-    lines += list(aEntries)
+    for item in aEntries:
+        # A copy, so an entry reused across transcripts gets its result each time.
+        item = json.loads(json.dumps(item))
+        lines.append(item)
+        # A tool call without an id ran and succeeded; one with an id brings its own result, or none.
+        for block in item.get('message', {}).get('content', []) if item.get('type') == 'assistant' else []:
+            if block.get('type') == 'tool_use' and 'id' not in block:
+                block['id'] = f'call{len(lines)}'
+                lines.append(entry('user', {'type': 'tool_result', 'tool_use_id': block['id']}))
     lines += [entry('assistant', {'type': 'text', 'text': t}) for t in aTexts]
     handle, path = tempfile.mkstemp(suffix='.jsonl', dir=aFolder)
     os.close(handle)
@@ -404,6 +416,314 @@ class EditGuardTest(unittest.TestCase):
             reason = decide({**edit, 'transcript_path': transcript(folder, 'Lane: Standard', aState=gone)})
             self.assertIn('.sdlc/changes/gone/state.md', reason)
             self.assertIn('not found', reason)
+
+    def test_verified_claim(self):
+        # Standard and Controlled work records status: verified only after this session invoked the verify skill on
+        # the code that its last review saw. The hook logs skill calls with a fingerprint of the project files.
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as data, \
+                mock.patch.dict(os.environ, {'CLAUDE_PLUGIN_DATA': data}):
+            project, counter = Path(folder), iter(range(10 ** 6))
+
+            def run(aSteps, aState='status: reviewing\nlane: standard\napprovals:\n  - gate: plan\n', aClaim=None, aRouter=True):
+                """Play steps in a new session of a new change and return the decision on the claim.
+                R, V: the review and verify skills. W: a code change. C: a claim that must pass and is then written.
+                f: a claim that passes the hook but is never written. e: evidence added to the state file.
+                B: the change is reopened. G: a commit.
+                r, v: the same skills inside a sub-agent. t: verify typed as a command. b: a verify skill of
+                another origin. O: a claim on another change that went through."""
+                slug = f'c{next(counter)}'
+                state = change(folder, slug, aState)
+                session = {'session_id': slug, 'cwd': folder, 'transcript_path': transcript(folder, aState=state)}
+                claim = aClaim(state) if aClaim else {'tool_name': 'Write', 'tool_input': {
+                    'file_path': str(state), 'content': 'status: verified\nlane: standard\n'}}
+                if aRouter:
+                    edit_guard.main_event({**session, 'hook_event_name': 'PostToolUse', 'tool_name': 'Skill',
+                                           'tool_input': {'skill': 'ai-native-sdlc:ai-native-sdlc'}, 'tool_response': {'success': True}})
+                for step in aSteps:
+                    if step in 'RVrv':
+                        name = 'ai-native-sdlc:ai-native-' + ('review' if step in 'Rr' else 'verify')
+                        edit_guard.main_event({**session, 'hook_event_name': 'PostToolUse', 'tool_name': 'Skill',
+                                               'tool_input': {'skill': name}, 'tool_response': {'success': True},
+                                               **({'agent_id': 'sub1'} if step in 'rv' else {})})
+                    elif step == 't':
+                        edit_guard.main_event({**session, 'hook_event_name': 'UserPromptExpansion',
+                                               'command_name': 'ai-native-sdlc:ai-native-verify'})
+                    elif step == 'b':
+                        edit_guard.main_event({**session, 'hook_event_name': 'PostToolUse', 'tool_name': 'Skill',
+                                               'tool_input': {'skill': 'ai-native-verify'}, 'tool_response': {'success': True}})
+                    elif step == 'G':
+                        for args in (('add', '-A'), ('commit', '-q', '-m', 'step')):
+                            subprocess.run(['git', *args], cwd=folder, check=True, capture_output=True)
+                    elif step == 'f':
+                        self.assertIsNone(decide({**session, **claim}), aSteps)
+                    elif step == 'x':
+                        self.assertIsNone(decide({**session, **claim}), aSteps)
+                        edit_guard.pending(session).write_text('{', encoding='utf-8')
+                        self.assertIsNone(decide({**session, 'tool_name': 'Bash', 'tool_input': {'command': 'ls'}}))
+                        self.assertFalse(edit_guard.pending(session).exists())
+                    elif step == 'O':
+                        edit_guard.record(session, claim=['another-change'], tree={})
+                    elif step == 'W':
+                        (project / 'a.py').write_text(f'x = {next(counter)}\n', encoding='utf-8')
+                    elif step == 'C':
+                        self.assertIsNone(decide({**session, **claim}), aSteps)
+                        state.write_text('status: verified\nlane: standard\n', encoding='utf-8')
+                    elif step == 'B':
+                        reopened = aState.replace('reviewing', 'building')
+                        self.assertIsNone(decide({**session, 'tool_name': 'Write', 'tool_input': {'file_path': str(state), 'content': reopened}}))
+                        state.write_text(reopened, encoding='utf-8')
+                    elif step == 'e':
+                        state.write_text(aState + 'Evidence: python check.py exited 0\n', encoding='utf-8')
+                return decide({**session, **claim}) or ''
+
+            for git in (False, True):
+                if git:
+                    for args in (('init', '-q'), ('config', 'user.email', 'f@example.invalid'), ('config', 'user.name', 'F'),
+                                 ('add', '-A'), ('commit', '-q', '-m', 'base')):
+                        subprocess.run(['git', *args], cwd=folder, check=True, capture_output=True)
+                # No verify: denied, and the reason names review first when code changed since the last review.
+                self.assertIn('ai-native-verify skill first', run(''))
+                self.assertIn('ai-native-verify skill first', run('R'))
+                self.assertIn('ai-native-verify skill first', run('WR'))
+                self.assertIn('ai-native-review', run('W'))
+                self.assertIn('ai-native-review', run('RW'))
+                # Verify on the code the review saw passes; a change between them needs a new review.
+                for allowed in ('V', 'RV', 'WRV', 'RWRV', 'WRVW', 'RVW'):
+                    self.assertEqual(run(allowed), '', allowed)
+                for denied in ('WV', 'RWV', 'WRWV'):
+                    self.assertIn('ai-native-review', run(denied), denied)
+                # Once the review saw the current code, only verify is missing.
+                self.assertIn('ai-native-verify skill again', run('RWVR'))
+                self.assertNotIn('ai-native-review', run('RWVR'))
+                self.assertEqual(run('RWVRV'), '')
+                self.assertIn('ai-native-review', run('WVRW'))
+                # A recorded claim uses up the verify before it: a reopened change needs review and verify again.
+                self.assertIn('ai-native-review', run('WRVCBW'))
+                self.assertIn('ai-native-review', run('WRVCBWV'))
+                self.assertIn('ai-native-verify skill first', run('WRVCBWR'))
+                self.assertEqual(run('WRVCBWRV'), '')
+                # A claim that never landed (a refused or failed write) used nothing up, and neither did a claim on
+                # another change.
+                self.assertEqual(run('RVf'), '')
+                self.assertEqual(run('RVfe'), '')
+                self.assertEqual(run('RVO'), '')
+                # The denial names the files that changed, so output that is not code can be ignored or removed.
+                self.assertIn('a.py', run('RWV'))
+                # A session whose record starts at verify has no reviewed code to compare with.
+                self.assertIn('ai-native-review', run('V', aRouter=False))
+                self.assertIn('ai-native-review', run('', aRouter=False))
+                self.assertEqual(run('RV', aRouter=False), '')
+                if git:
+                    # A commit changes nothing about which code the review saw.
+                    self.assertEqual(run('WRGV'), '')
+                    self.assertEqual(run('WGRV'), '')
+                    self.assertIn('ai-native-review', run('WRWGV'))
+                    self.assertIn('ai-native-review', run('GRWGV'))
+                # Skills that ran inside a sub-agent do not count, nor does a skill of that name from elsewhere; a
+                # typed command does.
+                self.assertIn('ai-native-verify skill first', run('Rb'))
+                self.assertIn('ai-native-verify skill first', run('rv'))
+                self.assertEqual(run('Rt'), '')
+            # Files that Git ignores, and the lifecycle folder, are not code.
+            (project / '.gitignore').write_text('*.log\n__pycache__/\n', encoding='utf-8')
+            subprocess.run(['git', 'commit', '-q', '-a', '-m', 'ignore'], cwd=folder, capture_output=True)
+            subprocess.run(['git', 'add', '.gitignore'], cwd=folder, check=True, capture_output=True)
+            subprocess.run(['git', 'commit', '-q', '-m', 'ignore'], cwd=folder, check=True, capture_output=True)
+            noise = run('R')
+            (project / 'test.log').write_text('noise\n', encoding='utf-8')
+            (project / '__pycache__').mkdir()
+            (project / '__pycache__' / 'a.pyc').write_bytes(b'\0')
+            (project / '.sdlc' / 'changes' / 'notes.md').write_text('n\n', encoding='utf-8')
+            self.assertEqual(edit_guard.fingerprint(project), edit_guard.fingerprint(project))
+            before = edit_guard.fingerprint(project)
+            (project / 'test.log').write_text('more noise\n', encoding='utf-8')
+            self.assertEqual(edit_guard.fingerprint(project), before)
+            (project / 'new.py').write_text('y = 1\n', encoding='utf-8')
+            self.assertNotEqual(edit_guard.fingerprint(project), before)
+            self.assertTrue(noise)
+
+            # An unknown fingerprint never denies, and neither does a record that cannot be written.
+            with mock.patch.object(edit_guard, 'fingerprint', return_value=None):
+                self.assertEqual(run('RWV'), '')
+            # A project with no code yet is known, not unknown: its first code needs a review like any other.
+            with tempfile.TemporaryDirectory() as empty:
+                (Path(empty) / '.sdlc').mkdir()
+                self.assertEqual(edit_guard.fingerprint(Path(empty)), {})
+                self.assertEqual(edit_guard.changed({}, {'app.py': '1'}), ['app.py'])
+                self.assertEqual(edit_guard.changed(None, {'app.py': '1'}), [])
+            # A claim that landed is recorded before the skills that follow it, also when no write came between,
+            # and a damaged note of a claim is dropped (checked inside the step).
+            self.assertIn('ai-native-verify skill first', run('WRVCBR'))
+            self.assertEqual(run('WRVCRVB'), '')
+            # The claim behind a damaged note counts as made, so claiming again needs the skills again.
+            self.assertIn('ai-native-verify skill first', run('RVx'))
+            with mock.patch.dict(os.environ, {'CLAUDE_PLUGIN_DATA': str(project / 'a.py')}):
+                self.assertEqual(run('W'), '')
+            # A project in a subfolder of its repository: a changed tracked file is seen, and so is every file of a
+            # large project, so a denial can always name what changed.
+            with tempfile.TemporaryDirectory() as outer:
+                inner = Path(outer) / 'apps' / 'web'
+                (inner / '.sdlc').mkdir(parents=True)
+                (inner / 'a.py').write_text('x = 1\n', encoding='utf-8')
+                for args in (('init', '-q'), ('config', 'user.email', 'f@example.invalid'), ('config', 'user.name', 'F'),
+                             ('add', '-A'), ('commit', '-q', '-m', 'base')):
+                    subprocess.run(['git', *args], cwd=outer, check=True, capture_output=True)
+                seen = edit_guard.fingerprint(inner)
+                self.assertEqual(set(seen), {'a.py'})
+                (inner / 'a.py').write_text('x = 2\n', encoding='utf-8')
+                self.assertEqual(edit_guard.changed(seen, edit_guard.fingerprint(inner)), ['a.py'])
+                for number in range(5200):
+                    (inner / f'f{number}.txt').write_text('', encoding='utf-8')
+                self.assertEqual(len(edit_guard.fingerprint(inner)), 5201)
+            # Without Git, folders that hold no code are left out, also when the project root holds no file.
+            with tempfile.TemporaryDirectory() as bare:
+                for name in ('src/a.py', '.sdlc/changes/x/state.md', 'node_modules/m/index.js', 'build/out.js'):
+                    (Path(bare) / name).parent.mkdir(parents=True, exist_ok=True)
+                    (Path(bare) / name).write_text('x\n', encoding='utf-8')
+                self.assertEqual(set(edit_guard.fingerprint(Path(bare))), {'src/a.py'})
+
+            # What counts as the claim.
+            def edit(aOld, aNew):
+                return lambda aState: {'tool_name': 'Edit', 'tool_input': {'file_path': str(aState), 'old_string': aOld, 'new_string': aNew}}
+
+            def shell(aCommand, aTool='Bash'):
+                return lambda aState: {'tool_name': aTool, 'tool_input': {'command': aCommand.replace('SLUG', aState.parent.name)}}
+
+            def write(aContent):
+                return lambda aState: {'tool_name': 'Write', 'tool_input': {'file_path': str(aState), 'content': aContent}}
+            sed = "sed -i 's/status: reviewing/status: verified/' .sdlc/changes/SLUG/state.md"
+            for claim in (edit('status: reviewing', 'status: verified'), edit('reviewing', 'verified'), shell(sed),
+                          shell("cat > .sdlc/changes/SLUG/state.md <<'EOF'\nstatus: verified\nlane: standard\nEOF")):
+                self.assertIn('ai-native-verify', run('', aClaim=claim))
+                self.assertEqual(run('RV', aClaim=claim), '')
+            # Reading the state file, another status, and prose that mentions the status are not claims.
+            for claim in (shell('grep -n "status: verified" .sdlc/changes/SLUG/state.md'),
+                          shell('grep -c "status: verified" .sdlc/changes/SLUG/state.md > /dev/null'),
+                          shell("sed -i 's/status: reviewing/status: blocked/' .sdlc/changes/SLUG/state.md"),
+                          write('status: blocked\n'),
+                          write('status: building\nnext_action: verify, then status: verified\nEvidence: was status: verified on Monday\n')):
+                self.assertEqual(run('', aClaim=claim), '')
+            # A change that is already verified on disk can be rewritten or closed without a new verify, as ship
+            # does in a later session.
+            done = 'status: verified\nlane: standard\nnext_action: deliver\napprovals:\n  - gate: plan\n'
+            close = "sed -i 's/^status: verified/status: closed/' .sdlc/changes/SLUG/state.md"
+            for claim in (write('status: verified\nlane: standard\nnext_action: open PR\n'),
+                          edit('status: verified\nlane: standard\nnext_action: deliver', 'status: verified\nlane: standard\nnext_action: open PR'),
+                          shell(close), shell(close + ' && git mv .sdlc/changes/SLUG .sdlc/archive/SLUG'),
+                          shell("cd .sdlc/changes/SLUG && sed -i 's/^status: verified/status: closed/' state.md"),
+                          shell("(Get-Content .sdlc/changes/SLUG/state.md) -replace 'status: verified','status: closed' | Set-Content .sdlc/changes/SLUG/state.md", 'PowerShell')):
+                self.assertEqual(run('', aState=done, aClaim=claim), '')
+            # Fast work and an undeclared lane are not checked, and an undeclared lane does not wait for late text.
+            self.assertEqual(run('', aState='lane: fast\n'), '')
+            started = time.monotonic()
+            self.assertEqual(run('', aState='status: reviewing\n'), '')
+            self.assertLess(time.monotonic() - started, 1)
+            # The approvals gate still comes first for a write outside .sdlc/.
+            outside = lambda aState: {'tool_name': 'Edit', 'tool_input': {'file_path': str(project / 'a.py')}}
+            self.assertIn('plan', run('', aState='lane: standard\n', aClaim=outside))
+
+    def test_scratch_files(self):
+        # A throwaway file is not project code: the system temp folder and files that Git ignores are open before
+        # the plan is approved, in every way of writing, so probes need no place under .sdlc/.
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as scratch:
+            project, temp = Path(folder), Path(scratch).as_posix()
+            path = transcript(folder, 'Lane: Standard', aState=change(folder, 'x', 'lane: standard\n'))
+            decided = lambda aTool, **aInput: decide({'tool_name': aTool, 'tool_input': aInput, 'cwd': folder, 'transcript_path': path})
+            for git in (False, True):
+                self.assertIsNone(decided('Write', file_path=f'{temp}/probe.ts', content='x'))
+                self.assertIsNone(decided('Edit', file_path=f'{temp}/probe.ts', old_string='x', new_string='y'))
+                for command in (f'cp a.py {temp}/b.py', f'sed -i s/a/b/ {temp}/b.py', f'rm {temp}/b.py', f'cd {temp} && cp b.py c.py',
+                                f'cp scripts/balance.ts {temp}/_hm.ts', 'cp a.py .sdlc/changes/x/probe.py',
+                                f'Copy-Item a.py -Destination {temp}/b.py', f'cp -rt {temp} src'):
+                    self.assertIsNone(decided('Bash', command=command), command)
+                for command in (f'mv a.py {temp}/b.py', f'cp {temp}/b.py a.py', 'cp a.py b.py', f'cp {temp}/b.py .',
+                                f'cp -T {temp}/b.py a.py', f'cp -t . {temp}/b.py', f'cp -at . {temp}/b.py'):
+                    self.assertIn('plan', decided('Bash', command=command), command)
+                reason = decided('Write', file_path=str(project / 'src.py'), content='x')
+                self.assertIn('plan', reason)
+                self.assertIn('temp folder', reason)
+                self.assertEqual(decided('Write', file_path=str(project / 'scratch' / 'p.py'), content='x') is None, git)
+                if not git:
+                    (project / '.gitignore').write_text('scratch/\n', encoding='utf-8')
+                    subprocess.run(['git', 'init', '-q'], cwd=folder, check=True, capture_output=True)
+
+        # A repository further up that ignores the whole project says nothing about the project's own files.
+        with tempfile.TemporaryDirectory() as outer:
+            (Path(outer) / '.gitignore').write_text('/*\n', encoding='utf-8')
+            subprocess.run(['git', 'init', '-q'], cwd=outer, check=True, capture_output=True)
+            inner = Path(outer) / 'project'
+            path = transcript(outer, 'Lane: Standard', aState=change(inner, 'x', 'lane: standard\n'))
+            self.assertIn('plan', decide({'tool_name': 'Write', 'tool_input': {'file_path': str(inner / 'app.py'), 'content': 'x'},
+                                          'cwd': str(inner), 'transcript_path': path}))
+
+    def test_hook_registration(self):
+        # The hook handles exactly the events it is registered for, each with a time limit: without one a slow
+        # hook holds the tool call for the host default of ten minutes.
+        root = Path(__file__).resolve().parents[1]
+        registered = json.loads((root / '.claude-plugin' / 'hooks.json').read_text(encoding='utf-8'))['hooks']
+        self.assertEqual(set(registered), {'PreToolUse', 'PostToolUse', 'UserPromptExpansion', 'Stop'})
+        self.assertEqual(registered['PostToolUse'][0]['matcher'], 'Skill')
+        for event, entries in registered.items():
+            for handler in (h for e in entries for h in e['hooks']):
+                self.assertEqual(handler['command'], 'python "${CLAUDE_PLUGIN_ROOT}/hooks/edit_guard.py"', event)
+                self.assertLessEqual(handler['timeout'], 60, event)
+        self.assertTrue((root / 'hooks' / 'edit_guard.py').is_file())
+        # An event the hook is not registered for, or does not know, is handled as a write check and blocks nothing.
+        self.assertIsNone(edit_guard.main_event({'hook_event_name': 'SessionStart'}))
+
+    def test_guard_failure(self):
+        def run(aInput, aBroken=None):
+            out, err = io.StringIO(), io.StringIO()
+            patches = [mock.patch('sys.stdin', io.StringIO(aInput)), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err)]
+            patches += [mock.patch.object(edit_guard, aBroken, side_effect=RuntimeError('boom'))] if aBroken else []
+            with contextlib.ExitStack() as stack:
+                for patch in patches:
+                    stack.enter_context(patch)
+                try:
+                    edit_guard.main()
+                    code = 0
+                except SystemExit as stop:
+                    # sys.exit(text) prints the text to stderr and exits 1.
+                    err.write(stop.code)
+                    code = 1
+            return code, out.getvalue(), err.getvalue()
+
+        with tempfile.TemporaryDirectory() as folder:
+            state = change(folder, 'x', 'lane: standard\nstatus: building\n')
+            routed = transcript(folder, 'Lane: Standard', aState=state)
+            edit = {'tool_name': 'Edit', 'tool_input': {'file_path': str(Path(folder) / 'a.py')}, 'cwd': folder}
+            # The hook as Claude Code runs it: a gated write in a plugin session is denied.
+            code, out, _ = run(json.dumps({**edit, 'transcript_path': routed}))
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)['hookSpecificOutput']['permissionDecision'], 'deny')
+            # A crash once the session is known to use the plugin denies the write and names the failure.
+            code, out, _ = run(json.dumps({**edit, 'transcript_path': routed}), 'approvedGates')
+            self.assertEqual(code, 0)
+            decision = json.loads(out)['hookSpecificOutput']
+            self.assertEqual(decision['permissionDecision'], 'deny')
+            self.assertIn('guard failed', decision['permissionDecisionReason'])
+            self.assertIn('RuntimeError: boom', decision['permissionDecisionReason'])
+            # Before that, a crash blocks nothing but says the guard is inactive: unreadable input, or a failure
+            # while reading the transcript or the command. A transcript line the hook cannot parse stays in the
+            # transcript, so denying on it would deny every later write of the session, Fast lane included.
+            later = transcript(folder, 'Lane: Fast', aEntries=[tool('Bash', command='ls')])
+            bad = Path(transcript(folder, 'Lane: Fast'))
+            bad.write_text(bad.read_text(encoding='utf-8') + '\n[1]', encoding='utf-8')
+            for raw, broken in (('notjson', None), ('[]', None),
+                                (json.dumps({**edit, 'transcript_path': later}), 'expandVars'),
+                                (json.dumps({**edit, 'transcript_path': str(bad)}), None),
+                                (json.dumps({**edit, 'transcript_path': routed}), 'readSession'),
+                                (json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'rm a.py'},
+                                             'transcript_path': routed, 'cwd': folder}), 'shellWritesOutsideSdlc')):
+                code, out, err = run(raw, broken)
+                self.assertEqual((code, out), (1, ''), raw[:40])
+                self.assertIn('guard is inactive', err)
+            # A missing transcript is not a crash: nothing shows the session uses the plugin.
+            self.assertEqual(run(json.dumps({**edit, 'transcript_path': str(Path(folder) / 'none.jsonl')})), (0, '', ''))
+            # A crash at the end of a turn never blocks the stop, so the agent can always hand back.
+            code, out, err = run(json.dumps({'hook_event_name': 'Stop', 'transcript_path': routed, 'cwd': folder}), 'readState')
+            self.assertEqual((code, out), (1, ''))
+            self.assertIn('guard is inactive', err)
 
 
 if __name__ == '__main__':

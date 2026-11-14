@@ -14,3 +14,4 @@ jobs:
       - run: python scripts/check_version.py
       - run: python scripts/test_behavior_check.py
       - run: python scripts/test_edit_guard.py
+      - run: python scripts/test_skills.py

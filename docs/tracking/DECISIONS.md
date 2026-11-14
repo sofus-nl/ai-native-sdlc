@@ -144,6 +144,61 @@ Deferred: an environment variable that lets the human switch the guard off when 
 
 A manual-harness run of 0.7.2 showed a false denial of a lifecycle write after `cd <project> && ... && cd .sdlc/changes/<slug> && D=$(date +%F) && cat > spec.md`. The cause was the `$(date +%F)`, not the absolute `cd`: any parenthesis stopped `cd` following. A `$(...)` that holds no directory change and no nested parenthesis now leaves the following on, because it cannot move the shell; its inner commands are still scanned like any segment. Every other subshell, group, and nested shell still stops it, and so does a `$(...)` in quotes.
 
+### Amendment (0.8.0, 2026-11-14)
+
+A review against 2026 field evidence and popular guard projects questioned the failure mode. Guards that protect against damage (cc-safety-net, failproofai) deny when they fail; guards that steer a workflow (tdd-guard, Anthropic's hookify) let the action through. This guard steers a workflow, so the 2026-09-29 failure mode stays, with one change:
+
+- **A failure after the session is known to use the plugin denies the write.** Once the hook has read the whole transcript and seen the plugin invoked, an error while it checks the lane or the approvals returns a denial that names the error. Before 0.8.0 that error let a gated write through.
+- **Every other failure still blocks nothing:** unreadable hook input, an error while reading the transcript or the command, a missing `python`, a timeout. For the first three the hook exits 1 and prints `ai-native-sdlc guard is inactive for this call`, which Claude Code shows as a hook error notice. A transcript file that cannot be opened passes without a message, as before.
+- **Why a transcript error does not deny:** the transcript only grows. One entry the hook cannot parse would deny every later write of that session, Fast work included. An independent review of the first draft, which did deny there, reproduced that lockout.
+- **A failure at the end of a turn never blocks the stop.**
+
+Rejected: `onFailure: "block"` in `hooks.json` (Claude Code 2.1.295 or later). It also covers a missing `python` and a timeout, but it applies to the hook in every session, so a machine without `python` could change no file in any project, including sessions that never use the plugin.
+
+Rejected: denying by lane ("fail closed for Standard and Controlled only"). The lane comes from the transcript and `state.md`, which the hook has not read when the input is unreadable or the transcript read fails.
+
+**The verify gate (same release).** Two new behavior cases, `gamed` and `weakened`, start at `status: reviewing` with a defect that passes the fixture's check. On 0.7.3 the agent found and fixed the defect in every one of 9 runs, and in every one it then wrote `status: verified` itself: it never invoked `ai-native-verify`, and nothing reviewed its fix. The router's rule ("invoke review on the full diff, then verify, before claiming a code change complete") is instruction text, and the end-of-turn check passes once the status says `verified`. So the hook now checks the write that makes the claim:
+
+- **Rule:** in Standard and Controlled work, a write that puts `status: verified` into a change's `state.md` is denied unless this session invoked `ai-native-verify`. If the session changed code before that call, an `ai-native-review` call must lie between the last such change and the verify call.
+- **Every denial has an exit the agent can reach:** the reason names the skill to invoke. In 6 of 6 runs on the released hook the agent finished the case; in the 5 runs with a denial it cleared each one by invoking the named skill. On two drafts, 2 of 12 runs ended at `status: blocked` instead: one draft counted a denied command as a code change, and the other asked for review when only verify was missing. Only tool calls that ran count now (a shell command that ran and then failed still counts; a refused one does not), and the reason names the next skill to invoke.
+- **A code change after verify started does not count,** because verify reverses a fix to prove that a check detects the bug, then restores it.
+- **Not checked:** Fast work, a change with no lane, a command that only reads `state.md`.
+
+- **The claim is a change of status.** An edit is replayed against the file: changing only the status word counts, and rewriting or closing a change that is already `verified` does not. An independent review of the first draft showed that the draft denied ship's close of a verified change in a later session, and any rewrite that kept the status line.
+- **A recorded claim uses up the verify before it.** A fix made after `status: verified` was written needs review and verify again. The same review showed the draft let that fix through. A write the hook denied recorded nothing and does not count; an eval run showed a later draft counting it and naming the wrong skill.
+
+Known limits: the hook reads only this session's transcript, so a verify or review from an earlier session or from inside a sub-agent does not count, and a code change made by a sub-agent is not seen; the agent runs the skills again, or the human edits `state.md`. A code change after the last verify call and before the first claim is not checked, and neither is one whose result the transcript no longer holds, because it cannot be told apart from verify's own reversal. Any shell write to a project file between review and verify counts as a code change and costs a second review. For shell commands the check reads literal text, so a command that writes the status another way is not caught.
+
+Rejected: more wording. A sentence added to the review skill for these defects was removed again, because 0.7.3 already found them in 9 of 9 runs.
+
+Rejected: checking at the end of the turn. The claim is already written by then, and a second stop always passes.
+
+### Amendment (0.9.0, 2026-11-14)
+
+Two reviews of 0.8.0 and a probe of Claude Code 2.1.319 showed that the transcript is the wrong source for the verify check. Sub-agent tool calls are not written to the parent transcript, so a build worker's code change was never seen. The transcript is written after the hook runs for calls in the same message. Which shell command wrote code was a guess from its text. Anthropic's hooks reference says the transcript "may lag the in-memory conversation", and OpenAI's says the format "isn't a stable interface for hooks".
+
+- **The hook keeps its own record.** It runs after each `Skill` call and for a typed skill command, and appends the skill's name and a fingerprint of the project files to a file per session in the plugin's data folder. Only skills of this plugin that the main agent invoked are recorded. The probe showed that this event arrives before the next tool call starts, also within one message.
+- **"Did code change" is a comparison of files, not of commands.** The fingerprint holds a content hash per file outside `.sdlc/` that Git does not ignore. The check asks whether the last verify started from the files the last review saw. The first draft hashed the difference from the last commit; an independent review showed that any commit then made changed code look reviewed, and the build skill commits each checkpoint.
+- **A denial names the changed files.** Output that a test run rewrites would otherwise deny every round with no way for the agent to find the cause.
+- **A claim counts once the state file shows it.** The hook notes a `status: verified` write it let through and records it at the next call if the file then holds that status.
+- **Still from the transcript:** the lane stated in chat, whether the session invoked the plugin, and which `state.md` is active. No event carries the assistant's text before a tool call.
+- **Failure mode unchanged:** an error in the new events blocks nothing. If the data folder cannot be written, the verify check is off.
+
+**Throwaway files (same release).** Session logs from 15 October to 14 November held 141 denials. Eighteen were probe, benchmark, or repro scripts, and 12 of the 17 in real projects were writes into Claude's scratch folder under the system temp folder. The 0.7.1 rule let only a shell redirect into temp through. Agents answered by putting probes under `.sdlc/changes/<slug>/probes/` (one repository now tracks 114 such files), by running scripts inline, or by stating the Fast lane.
+
+- **Rule:** a file under the system temp folder, or a file Git ignores, is not project code. Every way of writing it passes before approval. A copy is checked on its destination only.
+- Measured against the same logs: the temp rule lets 14 of the 19 throwaway writes through and none of the 87 denied writes to real code.
+
+Rejected: letting any new file through that the plan does not name. It covers every probe, and also 7 of 71 denied writes to real code (new test files).
+
+Rejected: a scratch folder with a fixed name. Git's ignore rules already say which files a project does not keep.
+
+Rejected: denying on hook failure (`onFailure: "block"`), for the reasons in the 0.8.0 amendment.
+
+Rejected for now: a guard on Codex. Codex 0.167 runs plugin hooks and accepts the same denial output, and a patch arrives as text from which paths can be read. But no event tells a hook that a skill was used, so the verify check and the "session uses the plugin" test cannot be decided, and Codex skips a plugin's hooks without notice until the user trusts them, after each plugin update, and under `codex exec`. A guard that covers only the approvals gate, decided from `state.md` on disk, is possible; it is a different design and needs its own behavior runs on Codex.
+
+Known limits: see the changelog entry for 0.9.0.
+
 ## ADR-004: Add STE-informed clarity rules as wording only (2026-10-07)
 
 ### Status
