@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import os
 import sys
@@ -9,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hooks'))
+import edit_guard  # noqa: E402
 from edit_guard import decide, decideStop  # noqa: E402
 
 
@@ -23,7 +26,15 @@ def tool(aName, **aInput):
 def transcript(aFolder, *aTexts, aRouted=True, aState=None, aEntries=()):
     lines = [tool('Skill', skill='ai-native-sdlc:ai-native-sdlc')] if aRouted else []
     lines += [tool('Read', file_path=str(aState))] if aState else []
-    lines += list(aEntries)
+    for item in aEntries:
+        # A copy, so an entry reused across transcripts gets its result each time.
+        item = json.loads(json.dumps(item))
+        lines.append(item)
+        # A tool call without an id ran and succeeded; one with an id brings its own result, or none.
+        for block in item.get('message', {}).get('content', []) if item.get('type') == 'assistant' else []:
+            if block.get('type') == 'tool_use' and 'id' not in block:
+                block['id'] = f'call{len(lines)}'
+                lines.append(entry('user', {'type': 'tool_result', 'tool_use_id': block['id']}))
     lines += [entry('assistant', {'type': 'text', 'text': t}) for t in aTexts]
     handle, path = tempfile.mkstemp(suffix='.jsonl', dir=aFolder)
     os.close(handle)
@@ -404,6 +415,185 @@ class EditGuardTest(unittest.TestCase):
             reason = decide({**edit, 'transcript_path': transcript(folder, 'Lane: Standard', aState=gone)})
             self.assertIn('.sdlc/changes/gone/state.md', reason)
             self.assertIn('not found', reason)
+
+    def test_verified_claim(self):
+        # Standard and Controlled work records status: verified only after this session invoked the verify skill, with
+        # a review between the last code change before it and that verify.
+        with tempfile.TemporaryDirectory() as folder:
+            state = change(folder, 'x', 'status: reviewing\nlane: standard\napprovals:\n  - gate: plan\n')
+            claim = {'tool_name': 'Write', 'cwd': folder,
+                     'tool_input': {'file_path': str(state), 'content': 'status: verified\nlane: standard\n'}}
+            review, verify = (tool('Skill', skill=f'ai-native-sdlc:ai-native-{s}') for s in ('review', 'verify'))
+            code = tool('Write', file_path=str(Path(folder) / 'a.py'), content='x = 1\n')
+            shell = tool('Bash', command='echo x > a.py')
+            lifecycle = tool('Write', file_path=str(Path(folder) / '.sdlc' / 'changes' / 'x' / 'plan.md'), content='p\n')
+
+            def decided(*aEntries, aEvent=claim, aState=state, **aOptions):
+                return decide({**aEvent, 'transcript_path': transcript(folder, aState=aState, aEntries=aEntries, **aOptions)})
+            self.assertIn('ai-native-verify', decided())
+            self.assertIn('ai-native-verify', decided(review))
+            self.assertIsNone(decided(review, verify))
+            self.assertIsNone(decided(verify))
+            for write in (code, shell):
+                self.assertIsNone(decided(write, review, verify))
+                self.assertIn('ai-native-review', decided(review, write, verify))
+                self.assertIn('ai-native-review', decided(write, verify))
+                # The denial names the next skill: review first when the last code change has none after it.
+                self.assertIn('ai-native-review', decided(write))
+                self.assertIn('ai-native-review', decided(review, write))
+                self.assertNotIn('ai-native-review', decided(write, review))
+                self.assertIn('ai-native-review', decided(write, verify, review, write))
+                # Once the review is done, the denial asks for verify alone.
+                self.assertIn('ai-native-verify skill again', decided(review, write, verify, review))
+                self.assertNotIn('ai-native-review', decided(review, write, verify, review))
+                self.assertIsNone(decided(review, write, verify, review, verify))
+                # A write after verify started is part of verification (a reversed fix that is restored).
+                self.assertIsNone(decided(write, review, verify, write))
+            self.assertIsNone(decided(review, lifecycle, verify))
+            # Other ways to write the claim are checked too; reading the state file is not.
+            edit = {**claim, 'tool_name': 'Edit', 'tool_input': {'file_path': str(state), 'old_string': 'status: reviewing',
+                                                                 'new_string': 'status: verified'}}
+            sed = {'tool_name': 'Bash', 'cwd': folder,
+                   'tool_input': {'command': "sed -i 's/status: reviewing/status: verified/' .sdlc/changes/x/state.md"}}
+            redirect = {**sed, 'tool_input': {'command': "cat > .sdlc/changes/x/state.md <<'EOF'\nstatus: verified\nlane: standard\nEOF"}}
+            for event in (edit, sed, redirect):
+                self.assertIn('ai-native-verify', decided(aEvent=event), event['tool_input'])
+                self.assertIsNone(decided(review, verify, aEvent=event), event['tool_input'])
+            for command in ('grep -n "status: verified" .sdlc/changes/x/state.md',
+                            'grep -c "status: verified" .sdlc/changes/x/state.md > /dev/null',
+                            "sed -i 's/status: reviewing/status: blocked/' .sdlc/changes/x/state.md"):
+                self.assertIsNone(decided(aEvent={**sed, 'tool_input': {'command': command}}), command)
+            self.assertIsNone(decided(aEvent={**claim, 'tool_input': {'file_path': str(state), 'content': 'status: blocked\n'}}))
+            # An edit that changes only the status word is the same claim.
+            word = {**edit, 'tool_input': {'file_path': str(state), 'old_string': 'reviewing', 'new_string': 'verified'}}
+            self.assertIn('ai-native-verify', decided(aEvent=word))
+            # Prose that mentions the status is not a claim.
+            prose = 'status: building\nnext_action: verify, then status: verified\nEvidence: was status: verified on Monday\n'
+            self.assertIsNone(decided(aEvent={**claim, 'tool_input': {'file_path': str(state), 'content': prose}}))
+            # A typed skill command counts like a Skill call.
+            typed = entry('user', {'type': 'text', 'text': '<command-name>/ai-native-sdlc:ai-native-verify</command-name>'})
+            self.assertIsNone(decided(review, typed))
+            def wrote(aId, aError=None):
+                call = {'type': 'tool_use', 'id': aId, 'name': 'Write',
+                        'input': {'file_path': str(state), 'content': 'status: verified\nlane: standard\nnext_action: ship\n'}}
+                result = [] if aError is None else [entry('user', {'type': 'tool_result', 'tool_use_id': aId, 'is_error': aError})]
+                return [entry('assistant', call)] + result
+            # The claim call itself may already be in the transcript when the hook runs; it has no result yet.
+            self.assertIsNone(decided(review, verify, *wrote('now')))
+            # A recorded claim uses up the verify before it: a later code change needs review and verify again.
+            earlier = wrote('ok', False)
+            self.assertIn('ai-native-verify', decided(code, review, verify, *earlier, code))
+            self.assertIn('ai-native-review', decided(code, review, verify, *earlier, code, verify))
+            self.assertIsNone(decided(code, review, verify, *earlier, code, review, verify))
+            # A claim that the hook denied recorded nothing, so the verify before it still counts.
+            denied = wrote('no', True)
+            self.assertIn('ai-native-review', decided(review, code, verify, *denied))
+            self.assertIsNone(decided(code, review, verify, *denied))
+            self.assertIsNone(decided(review, code, verify, *denied, review, verify))
+            # A change that is already verified on disk can be rewritten or closed without a new verify, as ship
+            # does in a later session.
+            done = change(folder, 'done', 'status: verified\nlane: standard\nnext_action: deliver\napprovals:\n  - gate: plan\n')
+            ship = tool('Skill', skill='ai-native-sdlc:ai-native-ship')
+            for event in ({**claim, 'tool_input': {'file_path': str(done), 'content': 'status: verified\nlane: standard\nnext_action: open PR\n'}},
+                          {**edit, 'tool_input': {'file_path': str(done), 'old_string': 'status: verified\nlane: standard\nnext_action: deliver',
+                                                  'new_string': 'status: verified\nlane: standard\nnext_action: open PR'}},
+                          {**sed, 'tool_input': {'command': "sed -i 's/^status: verified/status: closed/' .sdlc/changes/done/state.md"}},
+                          {**sed, 'tool_input': {'command': "sed -i 's/^status: verified/status: closed/' .sdlc/changes/done/state.md && git mv .sdlc/changes/done .sdlc/archive/done"}},
+                          {**sed, 'tool_input': {'command': "cd .sdlc/changes/done && sed -i 's/^status: verified/status: closed/' state.md"}},
+                          {'tool_name': 'PowerShell', 'cwd': folder, 'tool_input': {'command': "(Get-Content .sdlc/changes/done/state.md) -replace 'status: verified','status: closed' | Set-Content .sdlc/changes/done/state.md"}}):
+                self.assertIsNone(decided(ship, aEvent=event, aState=done), event['tool_input'])
+            # A code-writing command that was denied or failed never ran, so it is not a code change.
+            def ran(aId, aResult, aName='Bash', **aInput):
+                return [entry('assistant', {'type': 'tool_use', 'id': aId, 'name': aName, 'input': aInput}),
+                        entry('user', {'type': 'tool_result', 'tool_use_id': aId, 'is_error': True, 'content': aResult})]
+            writes = 'rm -rf __pycache__; echo x > a.py'
+            for refusal in ('PreToolUse:Bash hook error: Standard work records status: verified only after',
+                            [{'type': 'text', 'text': 'Permission to use Bash has been denied.'}],
+                            "The user doesn't want to proceed with this tool use."):
+                self.assertIsNone(decided(code, review, *ran('rm', refusal, command=writes), verify), refusal)
+            # A command that ran and then failed may have written first (an edit chained to a failing test).
+            self.assertIn('ai-native-review', decided(code, review, *ran('t', 'Exit code 1', command=writes + ' && false'), verify))
+            # A skill call that failed, or a skill of that name from another plugin, is not this plugin's skill.
+            failed = ran('v', 'Unknown skill', 'Skill', skill='ai-native-sdlc:ai-native-verify')
+            self.assertIn('ai-native-verify', decided(review, *failed))
+            self.assertIn('ai-native-verify', decided(review, tool('Skill', skill='other:ai-native-verify')))
+            self.assertIsNone(decided(tool('Skill', skill='ai-native-review'), tool('Skill', skill='ai-native-verify')))
+            # Closing another change does not use up this change's verify.
+            closed = [entry('assistant', {'type': 'tool_use', 'id': 'close', 'name': 'Bash', 'input': {
+                          'command': "sed -i 's/^status: verified/status: closed/' .sdlc/changes/done/state.md"}}),
+                      entry('user', {'type': 'tool_result', 'tool_use_id': 'close', 'is_error': False})]
+            self.assertIsNone(decided(code, review, verify, *closed))
+            # A verified active change does not excuse a claim on another change, alone or in the same command.
+            other = "sed -i 's/status: reviewing/status: verified/' .sdlc/changes/x/state.md"
+            for command in (other, other + ' .sdlc/changes/done/state.md'):
+                self.assertIn('ai-native-verify', decided(aEvent={**sed, 'tool_input': {'command': command}}, aState=done), command)
+            # A user entry without content does not stop the check.
+            self.assertIn('ai-native-verify', decided({'type': 'user', 'message': {'role': 'user'}}, {'type': 'user'}))
+            # Fast work, an undeclared lane, and a session that never used the plugin are not checked, and an
+            # undeclared lane does not wait for late transcript text.
+            self.assertIsNone(decided(aState=change(folder, 'fast', 'lane: fast\n')))
+            started = time.monotonic()
+            self.assertIsNone(decided(aState=change(folder, 'none', 'status: reviewing\n')))
+            self.assertLess(time.monotonic() - started, 1)
+            self.assertIsNone(decided(aRouted=False))
+            # The approvals gate still comes first for a write outside .sdlc/.
+            unapproved = change(folder, 'y', 'lane: standard\n')
+            outside = {'tool_name': 'Edit', 'tool_input': {'file_path': str(Path(folder) / 'a.py')}, 'cwd': folder}
+            self.assertIn('plan', decided(aEvent=outside, aState=unapproved))
+
+    def test_guard_failure(self):
+        def run(aInput, aBroken=None):
+            out, err = io.StringIO(), io.StringIO()
+            patches = [mock.patch('sys.stdin', io.StringIO(aInput)), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err)]
+            patches += [mock.patch.object(edit_guard, aBroken, side_effect=RuntimeError('boom'))] if aBroken else []
+            with contextlib.ExitStack() as stack:
+                for patch in patches:
+                    stack.enter_context(patch)
+                try:
+                    edit_guard.main()
+                    code = 0
+                except SystemExit as stop:
+                    # sys.exit(text) prints the text to stderr and exits 1.
+                    err.write(stop.code)
+                    code = 1
+            return code, out.getvalue(), err.getvalue()
+
+        with tempfile.TemporaryDirectory() as folder:
+            state = change(folder, 'x', 'lane: standard\nstatus: building\n')
+            routed = transcript(folder, 'Lane: Standard', aState=state)
+            edit = {'tool_name': 'Edit', 'tool_input': {'file_path': str(Path(folder) / 'a.py')}, 'cwd': folder}
+            # The hook as Claude Code runs it: a gated write in a plugin session is denied.
+            code, out, _ = run(json.dumps({**edit, 'transcript_path': routed}))
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)['hookSpecificOutput']['permissionDecision'], 'deny')
+            # A crash once the session is known to use the plugin denies the write and names the failure.
+            code, out, _ = run(json.dumps({**edit, 'transcript_path': routed}), 'approvedGates')
+            self.assertEqual(code, 0)
+            decision = json.loads(out)['hookSpecificOutput']
+            self.assertEqual(decision['permissionDecision'], 'deny')
+            self.assertIn('guard failed', decision['permissionDecisionReason'])
+            self.assertIn('RuntimeError: boom', decision['permissionDecisionReason'])
+            # Before that, a crash blocks nothing but says the guard is inactive: unreadable input, or a failure
+            # while reading the transcript or the command. A transcript line the hook cannot parse stays in the
+            # transcript, so denying on it would deny every later write of the session, Fast lane included.
+            later = transcript(folder, 'Lane: Fast', aEntries=[tool('Bash', command='ls')])
+            bad = Path(transcript(folder, 'Lane: Fast'))
+            bad.write_text(bad.read_text(encoding='utf-8') + '\n[1]', encoding='utf-8')
+            for raw, broken in (('notjson', None), ('[]', None),
+                                (json.dumps({**edit, 'transcript_path': later}), 'expandVars'),
+                                (json.dumps({**edit, 'transcript_path': str(bad)}), None),
+                                (json.dumps({**edit, 'transcript_path': routed}), 'readSession'),
+                                (json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'rm a.py'},
+                                             'transcript_path': routed, 'cwd': folder}), 'shellWritesOutsideSdlc')):
+                code, out, err = run(raw, broken)
+                self.assertEqual((code, out), (1, ''), raw[:40])
+                self.assertIn('guard is inactive', err)
+            # A missing transcript is not a crash: nothing shows the session uses the plugin.
+            self.assertEqual(run(json.dumps({**edit, 'transcript_path': str(Path(folder) / 'none.jsonl')})), (0, '', ''))
+            # A crash at the end of a turn never blocks the stop, so the agent can always hand back.
+            code, out, err = run(json.dumps({'hook_event_name': 'Stop', 'transcript_path': routed, 'cwd': folder}), 'readState')
+            self.assertEqual((code, out), (1, ''))
+            self.assertIn('guard is inactive', err)
 
 
 if __name__ == '__main__':

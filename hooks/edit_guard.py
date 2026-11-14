@@ -35,6 +35,13 @@ STATE = r'\.sdlc[\\/]+changes[\\/]+[\w.-]+[\\/]+state\.md'
 STATE_FILE = re.compile(STATE + '$')
 STATE_TOKEN = re.compile(r'[^\s"\'`;&|<>]{0,512}' + STATE + r'(?![\w.])')
 GATES = {'standard': ('plan',), 'controlled': ('intent', 'design', 'plan')}
+CLAIM = re.compile(r'status:\s*["\']?verified\b', re.I)
+# A tool call that a hook, a permission rule, or the user refused never ran.
+REFUSED = re.compile(r"^PreToolUse:\w+ hook error|permission to use|doesn't want to proceed", re.I)
+STATUS = re.compile(r'^[ \t]*status:\s*["\']?verified\b', re.I | re.M)
+# Non-empty once decide() has read the whole transcript and seen this session invoke the plugin. A failure while
+# reading it must not deny: the transcript only grows, so one bad line would deny every later write, Fast included.
+ROUTED = []
 
 
 def inSdlc(aTarget):
@@ -140,9 +147,76 @@ def statePath(aToken):
     return Path(aToken) if Path(aToken).is_absolute() else Path(aToken[aToken.find('.sdlc'):])
 
 
+def edits(aInput):
+    return ([aInput] if 'old_string' in aInput else []) + [e for e in aInput.get('edits') or [] if isinstance(e, dict)]
+
+
+def claimText(aTool, aInput):
+    """Whether the text of this tool call writes status: verified into a state.md, without a look at the file."""
+    if aTool in EDIT_TOOLS:
+        new = [aInput.get('content')] + [e.get('new_string') for e in edits(aInput)]
+        return bool(STATE_FILE.search(str(aInput.get('file_path') or ''))
+                    and STATUS.search('\n'.join(str(n) for n in new if n)))
+    command = str(aInput.get('command') or '')
+    # A command that only reads the state file (grep, cat) writes nothing into it.
+    # ponytail: literal text only; a command that writes the status another way (cp of a prepared file, a replace of
+    # the word alone) slips past.
+    return bool(aTool in SHELL_TOOLS and CLAIM.search(command) and 'state.md' in command
+                and (SHELL_WRITE.search(command) or SCRIPT_WRITE.search(command)
+                     or any('state.md' in t for t in REDIRECT.findall(command))))
+
+
+def claimsVerified(aTool, aInput, aRoots):
+    """Whether this tool call changes a change's state.md from another status to verified."""
+    if aTool in EDIT_TOOLS:
+        path = str(aInput.get('file_path') or '')
+        if not STATE_FILE.search(path):
+            return False
+        # Replay the edit, so a change of the status word alone counts and a rewrite of a verified file does not.
+        before = readState(Path(path))
+        after = str(aInput['content']) if 'content' in aInput else before
+        for edit in edits(aInput):
+            after = after.replace(str(edit.get('old_string') or ''), str(edit.get('new_string') or ''),
+                                  -1 if edit.get('replace_all') else 1)
+        return bool(STATUS.search(after) and not STATUS.search(before))
+    # A shell command cannot be replayed. A file that is already verified is being rewritten or closed.
+    named = [statePath(t) for t in STATE_TOKEN.findall(str(aInput.get('command') or ''))]
+    done = [any(STATUS.search(readState(f)) for f in ([p] if p.is_absolute() else [root / p for root in aRoots])) for p in named]
+    return claimText(aTool, aInput) and not (done and all(done))
+
+
+def changesNamed(aInput):
+    """The change folders whose state.md this tool call names."""
+    return set(re.findall(r'changes[\\/]+([\w.-]+)[\\/]+state\.md', str(aInput.get('file_path') or aInput.get('command') or '')))
+
+
+def verifyGap(steps, aRoots, aChanges):
+    """Return the skill this session must still invoke before it records status: verified, or ''."""
+    skills = [(i, str(s).removeprefix('ai-native-sdlc:')) for i, (kind, s) in enumerate(steps) if kind == 'Skill']
+    reviews = [i for i, s in skills if s == 'ai-native-review']
+    writes = [i for i, (kind, s) in enumerate(steps)
+              if kind in EDIT_TOOLS and not inSdlc(s) and not inScratch(s, aRoots)
+              or kind in SHELL_TOOLS and shellWritesOutsideSdlc(s, aRoots)]
+    unreviewed = bool(writes) and not any(i > writes[-1] for i in reviews)
+    both = 'code changed after the last review, so invoke the ai-native-review skill on the full diff, then ai-native-verify'
+    verify = max((i for i, s in skills if s == 'ai-native-verify'), default=None)
+    # An earlier write of status: verified for the same change used up the verify before it. A write that names
+    # no change folder (a bare state.md after a cd) counts for any change.
+    if verify is None or any(kind == 'Claim' and (not s or not aChanges or s & aChanges) for kind, s in steps[verify:]):
+        return both if unreviewed else 'invoke the ai-native-verify skill first'
+    # A code change after verify started is part of verification (a fix reversed to prove a check, then restored).
+    wrote = max((i for i in writes if i < verify), default=-1)
+    if wrote >= 0 and not any(wrote < i < verify for i in reviews):
+        if not unreviewed:
+            return 'the review of the last code change ran after verify, so invoke the ai-native-verify skill again'
+        return both
+    return ''
+
+
 def readSession(aEvent):
-    """Return whether this session invoked the plugin, its assistant text, and the state.md of its active change."""
-    routed, texts, written, referenced = False, [], [], []
+    """Return whether this session invoked the plugin, its assistant text, the state.md of its active change, and
+    its skill calls and write-capable tool calls in order."""
+    routed, texts, written, referenced, steps, succeeded, refused, results = False, [], [], [], [], set(), set(), set()
     with open(aEvent.get('transcript_path') or '', encoding='utf-8', errors='replace') as transcript:
         for line in transcript:
             try:
@@ -156,6 +230,14 @@ def readSession(aEvent):
                 said = content if isinstance(content, str) else ' '.join(
                     c.get('text', '') for c in content or [] if isinstance(c, dict) and c.get('type') == 'text')
                 routed = routed or '<command-name>/ai-native-sdlc:' in said
+                steps += [('Skill', s, None) for s in re.findall(r'<command-name>/(ai-native-sdlc:[\w-]+)', said)]
+                for c in content if isinstance(content, list) else []:
+                    if isinstance(c, dict) and c.get('type') == 'tool_result':
+                        shown = c.get('content')
+                        shown = shown if isinstance(shown, str) else ' '.join(
+                            str(b.get('text', '')) for b in shown or [] if isinstance(b, dict))
+                        (refused if REFUSED.search(shown) else succeeded if not c.get('is_error') else set()).add(c.get('tool_use_id'))
+                        results.add(c.get('tool_use_id'))
             elif entry.get('type') == 'assistant' and isinstance(content, list):
                 for c in content:
                     if not isinstance(c, dict):
@@ -165,12 +247,16 @@ def readSession(aEvent):
                         texts.append(c.get('text', ''))
                     elif c.get('type') != 'tool_use':
                         continue
-                    elif name == 'Skill':
+                    if claimText(name, args):
+                        steps.append(('Claim', changesNamed(args), c.get('id')))
+                    if name == 'Skill':
                         routed = routed or str(args.get('skill', '')).startswith('ai-native-sdlc:')
+                        steps.append((name, args.get('skill', ''), c.get('id')))
                     # Brief mode sends user-facing text through SendUserMessage (alias Brief), not text blocks.
                     elif name in ('SendUserMessage', 'Brief'):
                         texts.append(str(args.get('message', '')))
                     elif name in SHELL_TOOLS:
+                        steps.append((name, str(args.get('command') or ''), c.get('id')))
                         # A state file is written when a segment redirects into it, or starts with a write command that names it.
                         # A heredoc body stays with the segment that opens it, so a script that writes the path counts.
                         bodies, here = [], ''
@@ -192,14 +278,20 @@ def readSession(aEvent):
                     elif STATE_FILE.search(str(args.get('file_path') or args.get('notebook_path') or args.get('path') or '')):
                         referenced.append(Path(args.get('file_path') or args.get('notebook_path') or args.get('path')))
                         written += referenced[-1:] if name in EDIT_TOOLS else []
+                    elif name in EDIT_TOOLS:
+                        steps.append((name, str(args.get('file_path') or args.get('notebook_path') or ''), c.get('id')))
+    # A call counts once it ran: a refused call changed nothing, and the call being decided now has no result yet.
+    # A shell command that ran and then failed may have written first; an edit or a skill call that failed did nothing.
+    steps = [(kind, s) for kind, s, call in steps
+             if call is None or call in succeeded or kind in SHELL_TOOLS and call in results and call not in refused]
     # The change whose state.md this session last wrote is active; failing that, the one it last read.
     # Agents often write it through the shell, and read other changes' state.md for context.
     active = (written or referenced or [None])[-1]
     if active is None or active.is_absolute():
-        return routed, texts, active
+        return routed, texts, active, steps
     starts = [Path(p) for p in (aEvent.get('cwd'), os.environ.get('CLAUDE_PROJECT_DIR')) if p]
     root = next((d for s in starts for d in (s, *s.parents) if (d / '.sdlc').is_dir()), None)
-    return routed, texts, root / active if root else None
+    return routed, texts, root / active if root else None, steps
 
 
 def readState(aPath):
@@ -226,28 +318,37 @@ def approvedGates(aState):
 
 def decide(aEvent, aAttempt=0):
     tool, args = aEvent.get('tool_name'), aEvent.get('tool_input') or {}
-    detected = ''
+    detected, claim = '', claimsVerified(tool, args, projectRoots(aEvent))
     if tool in EDIT_TOOLS:
-        if inSdlc(str(args.get('file_path') or args.get('notebook_path') or '')):
-            return None
+        lifecycle = inSdlc(str(args.get('file_path') or args.get('notebook_path') or ''))
     elif tool in SHELL_TOOLS:
         detected = shellWritesOutsideSdlc(str(args.get('command') or ''), projectRoots(aEvent))
-        if not detected:
-            return None
-        detected = f' Detected write: {detected[:80]}.'
+        lifecycle = not detected
+        detected = f' Detected write: {detected[:80]}.' if detected else ''
     else:
         return None
+    # A lifecycle write is checked only when it records status: verified.
+    if lifecycle and not claim:
+        return None
     try:
-        routed, texts, path = readSession(aEvent)
+        routed, texts, path, steps = readSession(aEvent)
     except OSError:
         return None
     if not routed:
         return None
+    # Worked out with the transcript read, so a transcript entry that cannot be parsed blocks nothing (see ROUTED).
+    gap = verifyGap(steps, projectRoots(aEvent), changesNamed(args)) if claim else ''
+    ROUTED.append(True)
     state = readState(path)
+    # A shell command that names no state file (a bare state.md after a cd) writes the active change's file.
+    if tool in SHELL_TOOLS and not changesNamed(args) and STATUS.search(state):
+        gap = ''
     stated = [(m.group(1) or m.group(2)).lower() for m in LANE.finditer('\n'.join(texts))]
     recorded = [r.lower() for r in re.findall(r'^lane:\s*(\w+)', state, re.M | re.I)]
     lanes = [l for l in stated[-1:] + recorded[:1] if l in LANES]
     # Text in the same message as this tool call can reach the transcript up to ~1 s after the hook starts.
+    if not lanes and lifecycle:
+        return None
     if not lanes and aAttempt < 20:
         time.sleep(0.1)
         return decide(aEvent, aAttempt + 1)
@@ -256,9 +357,10 @@ def decide(aEvent, aAttempt=0):
                 + detected)
     # The stricter of the stated and the recorded lane applies, so stating a lower lane never clears a gate.
     lane = max(lanes, key=LANES.index)
-    missing = [g for g in GATES.get(lane, ()) if g not in approvedGates(state)]
+    missing = [] if lifecycle else [g for g in GATES.get(lane, ()) if g not in approvedGates(state)]
     if not missing:
-        return None
+        return (f'{lane.capitalize()} work records status: verified only after this session ran review and verification: '
+                f'{gap}.') if gap and lane in GATES else None
     where = "this session's change state.md (none read or written yet)"
     if path:
         where = f'.sdlc/changes/{path.parent.name}/state.md' + ('' if state else ' (not found: archived or moved?)')
@@ -274,7 +376,7 @@ def decideStop(aEvent):
     if aEvent.get('stop_hook_active') or aEvent.get('background_tasks'):
         return None
     try:
-        routed, _, path = readSession(aEvent)
+        routed, _, path, _ = readSession(aEvent)
     except OSError:
         return None
     state = readState(path) if routed else ''
@@ -288,13 +390,23 @@ def decideStop(aEvent):
 
 
 def main():
-    event = json.load(sys.stdin)
-    if event.get('hook_event_name') == 'Stop':
-        reason = decideStop(event)
-        if reason:
-            print(json.dumps({'decision': 'block', 'reason': reason}))
-        return
-    reason = decide(event)
+    event = None
+    ROUTED.clear()
+    try:
+        event = json.load(sys.stdin)
+        if event.get('hook_event_name') == 'Stop':
+            reason = decideStop(event)
+            if reason:
+                print(json.dumps({'decision': 'block', 'reason': reason}))
+            return
+        reason = decide(event)
+    except Exception as error:
+        failure = f'{type(error).__name__}: {error}'
+        # A failure blocks nothing unless this session is known to use the plugin (ADR-003). A stop is never blocked.
+        if not ROUTED or event.get('hook_event_name') == 'Stop':
+            sys.exit(f'ai-native-sdlc guard is inactive for this call ({failure}).')
+        reason = (f"The ai-native-sdlc guard failed ({failure}), so it cannot check this lane's approvals and denies the "
+                  'write. Retrying will not help: report this to the user, who can fix or disable the plugin hook.')
     if reason:
         print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
                                                  'permissionDecision': 'deny',
