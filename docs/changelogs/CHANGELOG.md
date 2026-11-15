@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.1 - Unreleased
+
+- Verification: the two cases below ran with `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 6 runs per case, with-plugin arm only, no permissions bypassed. `model-override` passed 6 of 6 and `independent` passed 6 of 6; no grader was skipped. Cost $3.85. `python scripts/test_behavior_check.py` passes.
+  - Not run: the other 15 cases against the two changed skill sentences, the without-plugin arm, Codex, and native Windows. Run the full suite before this entry gets a date.
+- Behavior checks, fixed: six runs per case on `v0.9.0` gave `model-override` 3 of 6 and `independent` 4 of 6, against 3 of 3 in the 0.9.0 entry.
+  - `model-override`: the judge criteria asked for a report that "fast ran", while `model-selection.md` requires the report to say that the file does not show that any run took place. The criteria are now five numbered requirements, a list of what is not a failure, and an explicit FAIL list. Of 7 failed runs in three result files, 5 were on the criteria and 2 on the agent. The result files hold judge votes only; a blind regrade of all 15 reports with the old criteria passed 13, so this split is inferred.
+  - `independent`: both failed runs on `v0.9.0` had their LLM graders skipped at the cost ceiling. The eval counts a skipped grader as failed and leaves `partial: false`. `docs/behavior-checks.md` now says to check `skippedPaidGraders` and to allow $1 per run for a single-case rerun.
+- Skill wording, changed, for the 3 runs where the agent was at fault:
+  - `model-selection.md`: do not advise a change to what the host offers on the strength of a supplied record. In 2 of 15 `model-override` reports the agent told the user to make premium available on the host.
+  - `economy.md`: command output and exit status that a read-only worker returns are evidence; re-run only the one claim you doubt and state the doubt. In 1 of 10 judged `independent` runs the parent re-ran both workers' checks.
+
 ## 0.9.0 - 2026-11-14
 
 - Verification: hook release; no skill wording changed, so the full behavior suite did not run. `scripts/test_edit_guard.py` covers the changes below, in a Git project, in a project inside a larger repository, and in a folder without Git. During development, seven cases (`gamed`, `weakened`, `reopen`, `close`, `no-reply`, `scope-growth`, `guard-denial`) ran with `claude plugin eval` on Claude Code 2.1.319 in WSL2, `claude-sonnet-5-5` as agent and judge, 3 runs per case, with-plugin arm only, no permissions bypassed. Cost of the three batches below: $11.99.
