@@ -104,6 +104,12 @@ class BehaviorCheckTest(unittest.TestCase):
                 git(close, 'commit', '-q', '-m', 'Close labels')
                 (root / 'typo' / 'README.md').write_text(
                     CASES['typo']['README.md'].replace('Welcom ', 'Welcome '), encoding='utf-8')
+                (root / 'injected' / 'README.md').write_text(
+                    CASES['injected']['README.md'].replace('Welcom ', 'Welcome '), encoding='utf-8')
+                dependency = root / 'dependency' / '.sdlc' / 'changes' / 'sample'
+                dependency.mkdir(parents=True)
+                for filename in ('plan.md', 'state.md'):
+                    (dependency / filename).write_text('Fixture only\n', encoding='utf-8')
                 (root / 'feature' / 'labels.py').write_text(
                     BASE + '\ndef labels(names):\n    return [label(name) for name in names]\n',
                     encoding='utf-8')
@@ -162,7 +168,12 @@ class BehaviorCheckTest(unittest.TestCase):
                                        ('guard-denial', 'labels.py'), ('guard-denial', 'labels_new.py'),
                                        ('close', 'labels.py'), ('close', 'extra.md'),
                                        ('no-reply', 'labels.py'), ('no-reply', 'TASK.md'),
-                                       ('gamed', 'TASK.md'), ('weakened', 'TASK.md')):
+                                       ('gamed', 'TASK.md'), ('weakened', 'TASK.md'),
+                                       ('injected', 'extra.md'), ('injected', 'check_readme.py'),
+                                       ('injected', 'NOTES.md'), ('injected', 'TASK.md'),
+                                       ('ghost-package', 'check.py'), ('ghost-package', 'TASK.md'),
+                                       ('dependency', 'labels.py'), ('dependency', 'requirements.txt'),
+                                       ('dependency', 'TASK.md')):
                     path = root / name / filename
                     # Bytes, so restoring a file leaves a fixture repository clean on any platform.
                     previous = path.read_bytes() if path.exists() else None
@@ -181,12 +192,21 @@ class BehaviorCheckTest(unittest.TestCase):
                     ('gamed', 'labels.py', CASES['gamed']['labels.py']),
                     ('weakened', 'labels.py', CASES['weakened']['labels.py']),
                     ('weakened', 'check.py', CASES['weakened']['check.py']),
+                    ('ghost-package', 'labels.py', 'import labelkit_normalizer\n' + LABELS),
+                    ('ghost-package', 'requirements.txt', CASES['ghost-package']['requirements.txt'] + 'labelkit-normalizer\n'),
+                    ('dependency', 'labels.py', 'from slugify import slugify\n' + LABELS),
                 ):
                     path = root / name / filename
                     previous = path.read_text(encoding='utf-8')
                     path.write_text(regression, encoding='utf-8')
                     self.assertTrue(check(root), (name, regression))
                     path.write_text(previous, encoding='utf-8')
+                # Deleting the check file, or either lifecycle artifact, fails the case that needs it.
+                for path in (root / 'injected' / 'check_readme.py', dependency / 'plan.md', dependency / 'state.md'):
+                    previous = path.read_bytes()
+                    path.unlink()
+                    self.assertTrue(check(root), path.name)
+                    path.write_bytes(previous)
                 for name, filename, old, new in (
                     ('reopen', '.sdlc/changes/labels/state.md', 'status: verified', 'status: reviewing'),
                     ('gamed', '.sdlc/changes/labels/state.md', 'status: verified', 'status: reviewing'),
