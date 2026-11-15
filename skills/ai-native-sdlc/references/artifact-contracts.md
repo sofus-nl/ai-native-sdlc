@@ -20,6 +20,7 @@ Store Standard and Controlled work under `.sdlc/changes/<slug>/`. Use existing r
 - Reference oracle: the design, document, or implementation the result must match, or `none`; never the code whose behavior this change alters
 - Required behavior and non-goals
 - Interfaces, data flow, trust boundaries, and failure behavior
+- When [security.md](security.md) applies: the abuse cases for each trust boundary, each with its acceptance ID or its accepted risk
 - Acceptance criteria with stable IDs such as `AC-1`; each criterion states one testable condition and avoids `should`, `appropriate`, `as needed`, `etc.`, `TBD`, and `and/or` (quoted UI copy and code are exempt)
 - Policy conflicts, decisions, and unresolved risks
 - Rollout and observability needs
@@ -31,6 +32,7 @@ Store Standard and Controlled work under `.sdlc/changes/<slug>/`. Use existing r
 - Tasks grouped under each checkpoint; mark dependencies and parallel waves only within a checkpoint where files and state do not collide
 - Requirement-to-proof map from each acceptance ID to a test, check, or observation
 - Complexity budget: reused seam, files touched, dependencies or abstractions added, intended deletions, and any deliberate ceiling
+- When [security.md](security.md) applies: the dependency record for each added or changed dependency (registry check and result, exact version and release date, install scripts, lockfile)
 - Risks, recovery path, and rejected alternatives
 - Expected commands and healthy outcomes
 

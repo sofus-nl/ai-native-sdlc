@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -13,7 +14,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hooks'))
 import edit_guard  # noqa: E402
-from edit_guard import decide, decideStop  # noqa: E402
+from edit_guard import decide, decideStop, packageAdd, shellWritesOutsideSdlc  # noqa: E402,F401
 
 
 def entry(aKind, aBlock):
@@ -724,6 +725,378 @@ class EditGuardTest(unittest.TestCase):
             code, out, err = run(json.dumps({'hook_event_name': 'Stop', 'transcript_path': routed, 'cwd': folder}), 'readState')
             self.assertEqual((code, out), (1, ''))
             self.assertIn('guard is inactive', err)
+
+    PACKAGE_ADDS = [
+        'npm install left-pad', 'npm i -D left-pad', 'pnpm add left-pad', 'yarn add left-pad', 'bun add left-pad',
+        'uv add requests', 'poetry add requests', 'cargo add serde', 'pip install requests',
+        'python -m pip install requests', 'go get example.com/x', 'pnpm add -D -w wrangler@4.162.0',
+        'npm install -D -E wrangler@4.158.0', 'pip install --quiet --target .tmp/pylib requests',
+    ]
+    NOT_PACKAGE_ADDS = [
+        'npm ci', 'npm install', 'pnpm install --frozen-lockfile', 'yarn install', 'bun install',
+        'pip install -r requirements.txt', 'pip install .', 'pip install -e .', 'uv sync', 'poetry install',
+        'npm test', 'npm run build', 'npx vitest', 'cargo build', 'go test ./...', 'npm view left-pad version',
+        'pnpm install --frozen-lockfile 2>&1', 'npm install --no-audit --no-fund 2>&1 | tail -5',
+        'npm install > install.log 2>&1', 'npm install --prefix web', 'npm install -w web',
+        'pnpm install --filter web', 'git commit -m "docs: run npm install left-pad"',
+    ]
+
+    def packageSession(self, aFolder, aKind, aTool='Bash'):
+        """A function that feeds a command to decide in a session of the given kind and returns the denial or None.
+        aKind: fast, standard (no plan approval), planned (Standard with the plan approved), controlled, controlled-approved."""
+        # Each session gets its own project folder: change() writes a fixed state.md path, so sessions that share a
+        # folder would overwrite each other's state.
+        aFolder = str(Path(aFolder) / aKind)
+        (Path(aFolder) / '.git').mkdir(parents=True, exist_ok=True)
+        states = {'standard': ('Lane: Standard', 'lane: standard\napprovals: []\n'),
+                  'planned': ('Lane: Standard', 'lane: standard\napprovals:\n  - gate: plan\n'),
+                  'controlled': ('Lane: Controlled', 'lane: controlled\napprovals:\n  - gate: intent\n  - gate: design\n'),
+                  'controlled-approved': ('Lane: Controlled', 'lane: controlled\n' + APPROVED)}
+        if aKind == 'fast':
+            path = transcript(aFolder, 'Lane: Fast.')
+        else:
+            said, text = states[aKind]
+            path = transcript(aFolder, said, aState=change(aFolder, 'x', text))
+        return lambda aCommand: decide({'tool_name': aTool, 'tool_input': {'command': aCommand}, 'cwd': aFolder,
+                                        'transcript_path': path})
+
+    def assertPackageAdd(self, aCommand):
+        result = shellWritesOutsideSdlc(aCommand)
+        self.assertTrue(result.startswith('package add:'), f'not classed as a package add: {aCommand!r} -> {result!r}')
+
+    def assertNoPackageAdd(self, aCommand):
+        result = shellWritesOutsideSdlc(aCommand)
+        self.assertFalse(result.startswith('package add:'), f'classed as a package add: {aCommand!r} -> {result!r}')
+
+    def test_package_add_needs_plan_approval(self):
+        # AC-6: a package-add is a write outside .sdlc/: denied without a plan approval, allowed with one.
+        with tempfile.TemporaryDirectory() as folder:
+            without = self.packageSession(folder, 'standard')
+            approved = self.packageSession(folder, 'planned')
+            for command in self.PACKAGE_ADDS:
+                with self.subTest(command=command):
+                    self.assertIsNotNone(without(command), f'not denied without a plan approval: {command}')
+                    self.assertIsNone(approved(command), f'denied with a plan approval: {command}')
+
+    def test_restore_and_other_commands_are_not_package_adds(self):
+        # AC-7: restores, local installs, queries, builds, tests, and text that merely names a package-add are not
+        # classed as a package-add, and pass in a Standard session without a plan approval.
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            fast = self.packageSession(folder, 'fast')
+            # The two sessions differ: the same ordinary project write is denied in Standard and allowed in Fast.
+            self.assertIsNotNone(standard('echo x > src/app.py'))
+            self.assertIsNone(fast('echo x > src/app.py'))
+            for command in self.NOT_PACKAGE_ADDS:
+                with self.subTest(command=command):
+                    self.assertNoPackageAdd(command)
+                    reason = standard(command)
+                    if command == 'npm install > install.log 2>&1':
+                        # The redirect writes install.log in the project, which the existing write rule may deny without
+                        # a plan approval. Only a denial as a package-add is wrong, so the text must not name one.
+                        self.assertNotIn('package', (reason or '').lower(), reason)
+                        self.assertNotIn('npm install', reason or '', reason)
+                    else:
+                        self.assertIsNone(reason, f'denied in Standard without a plan approval: {command}')
+
+    def test_package_add_in_nested_shell(self):
+        # AC-8: a package-add inside bash -c is detected like any other nested write.
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertPackageAdd('bash -c "npm install left-pad"')
+            self.assertIsNotNone(self.packageSession(folder, 'standard')('bash -c "npm install left-pad"'))
+
+    def test_fast_lane_is_not_gated_by_package_adds(self):
+        # AC-9: a Fast-lane session behaves as at the base release; no command is denied by the package-add rule.
+        with tempfile.TemporaryDirectory() as folder:
+            fast = self.packageSession(folder, 'fast')
+            for command in ('npm install left-pad', 'pnpm add zod', 'pip install requests',
+                            'bash -c "npm install left-pad"', 'npm ci', 'npm test', 'echo x > src/app.py'):
+                with self.subTest(command=command):
+                    self.assertIsNone(fast(command), f'denied in Fast: {command}')
+
+    def test_package_add_in_controlled_lane(self):
+        # R3: Controlled holds a package-add until intent, design, and plan are all approved.
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertIsNotNone(self.packageSession(folder, 'controlled')('pnpm add left-pad'))
+            self.assertIsNone(self.packageSession(folder, 'controlled-approved')('pnpm add left-pad'))
+
+    def test_package_add_through_powershell(self):
+        # The hook handles the PowerShell tool too.
+        with tempfile.TemporaryDirectory() as folder:
+            shell = self.packageSession(folder, 'standard', 'PowerShell')
+            self.assertIsNotNone(shell('npm install left-pad'))
+            self.assertIsNone(shell('npm ci'))
+
+    NOT_PACKAGE_ADDS_REVIEW = [
+        '(cd web && npm install)', '(npm install)', 'if (!(Test-Path node_modules)) { npm install }',
+        'try { npm install } catch { }', 'pip install --require-hashes -r requirements.txt',
+        'pip install --no-warn-script-location -r requirements.txt',
+        'pip install --no-index --find-links wheels -r requirements.txt', 'uv pip install --system -r requirements.txt',
+        'npm install --no-package-lock --prefix web', 'pnpm install --no-optional --filter web',
+        'npm install *> $null', 'npm install 2>$null', 'npm --prefix web install', 'pnpm -r install',
+    ]
+    PACKAGE_ADDS_REVIEW = [
+        '(npm install left-pad)', 'pnpm --filter web add zod', 'pnpm -C web add zod', 'npm --prefix web install left-pad',
+        'npm install @types/node --save-dev', 'pip install "requests==2.32.0"',
+    ]
+
+    def test_restores_in_brackets_and_with_unknown_options_are_not_package_adds(self):
+        # Review defects: a restore inside brackets or with an option the table lacks is not a package-add.
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in self.NOT_PACKAGE_ADDS_REVIEW:
+                with self.subTest(command=command):
+                    self.assertNoPackageAdd(command)
+                    reason = standard(command)
+                    if command in ('npm install *> $null', 'npm install 2>$null'):
+                        # $null is a null device, not a project file: a denial must name neither a package nor a redirect.
+                        self.assertNotIn('package', (reason or '').lower(), reason)
+                        self.assertNotIn('redirect', (reason or '').lower(), reason)
+                    else:
+                        self.assertIsNone(reason, f'denied in Standard without a plan approval: {command}')
+
+    def test_package_adds_in_brackets_and_after_global_options(self):
+        # Review defects: a package-add in brackets, or after a global option such as --prefix or --filter, is still one.
+        with tempfile.TemporaryDirectory() as folder:
+            without = self.packageSession(folder, 'standard')
+            approved = self.packageSession(folder, 'planned')
+            for command in self.PACKAGE_ADDS_REVIEW:
+                with self.subTest(command=command):
+                    self.assertIsNotNone(without(command), f'not denied without a plan approval: {command}')
+                    self.assertIsNone(approved(command), f'denied with a plan approval: {command}')
+
+    def test_package_add_scan_is_fast(self):
+        # Review defect: the package-add scan backtracks on long input.
+        for command in ('npm install ' + '1' * 50000, 'npm ' + '-a ' * 20000):
+            with self.subTest(command=command[:20]):
+                start = time.perf_counter()
+                shellWritesOutsideSdlc(command)
+                elapsed = time.perf_counter() - start
+                self.assertLess(elapsed, 2, f'scan took {elapsed:.1f}s on {len(command)} characters')
+
+    def test_quoted_text_that_names_an_install_is_not_a_package_add(self):
+        # Replay defect: a long real command whose quoted commit message and PR body mention an install was classed as
+        # a package-add. Text inside quotes that no program runs is not a command; quotes after bash -c / sh -c / pwsh -Command are.
+        commit = '\n'.join(['git commit -q -m "ci: Node 22 for the workflows', '',
+                            "pnpm 11 needs Node >= 22.13; on Node 20 'pnpm install' dies with",
+                            'ERR_UNKNOWN_BUILTIN_MODULE node:sqlite."'])
+        pr = r'''gh pr create --title "ci: Node 22" --body "On Node 20 \`pnpm install\` dies with \`ERR_UNKNOWN_BUILTIN_MODULE\`, so the build fails."'''
+        joined = (r'''sed -i -E 's/node-version: '"'"'20'"'"'/node-version: '"'"'22'"'"'/' ci.yml && '''
+                  r'''git commit -q -m "on Node 20 'pnpm install' dies with an error" && '''
+                  r'''gh pr create --body "On Node 20 \`pnpm install\` dies with an error"''')
+        allowed = [commit, pr, joined, 'bash -c "npm test" && git commit -m "docs: npm install left-pad"',
+                   'echo "to set up, run: npm install left-pad"', 'git log --grep="npm install left-pad"']
+        denied = ['bash -c "npm install left-pad"', "sh -c 'pip install requests'", 'pwsh -Command "npm install left-pad"',
+                  'bash -lc "cd web && pnpm add zod"']
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in allowed:
+                with self.subTest(command=command):
+                    self.assertNoPackageAdd(command)
+            # The sed -i on ci.yml is a project write, so Standard without a plan approval may deny it; the text must not call it a package add.
+            self.assertNotIn('package add', (standard(joined) or '').lower())
+            for command in denied:
+                with self.subTest(command=command):
+                    self.assertPackageAdd(command)
+                    self.assertIsNotNone(standard(command), f'not denied in Standard without a plan approval: {command}')
+
+    def test_package_add_scan_has_no_slow_option_shapes(self):
+        # Review defect: the speed test above only uses single-dash options; double-dash options backtrack too.
+        # Each input runs in its own spawned process, so a scan that never returns is killed instead of hanging the suite.
+        inputs = {'double dash, no verb': 'npm' + ' --a' * 40,
+                  'double dash words then another command': 'pnpm ' + ' '.join(['--foo'] * 40) + ' run x',
+                  'double dash with values': 'npm ' + ' '.join(['--foo bar'] * 5000) + ' x',
+                  'double dash with equals': 'npm ' + ' '.join(['--a=b'] * 5000) + ' x',
+                  'mixed': 'yarn ' + ' '.join(['-a', '--b', '--c=d', '--e f'] * 2000),
+                  'uv': 'uv ' + ' --a' * 40}
+        context = multiprocessing.get_context('spawn')
+        for name, command in inputs.items():
+            with self.subTest(shape=name):
+                process = context.Process(target=scanWithinTwoSeconds, args=(command,))
+                process.start()
+                process.join(5)
+                if process.is_alive():
+                    process.terminate()
+                    process.join()
+                    self.fail(f'scan did not return within 5s: {name}')
+                self.assertEqual(process.exitcode, 0, f'scan took 2s or more, or failed: {name}')
+
+    def test_literal_quoted_prose_is_not_a_package_add(self):
+        # Review defect: prose inside quotes, here-strings, comments and fences that names an install is not a command.
+        bash = [
+            "git commit -m 'docs: mention `npm install left-pad` usage'",
+            "git commit -m 'Run `npm install left-pad` first'",
+            "echo 'uses $(npm install left-pad) in docs'",
+            'git commit -m "docs: run `npm install left-pad` to set up"',
+            "gh pr create --title t --body '## Setup\n```bash\nnpm install left-pad\n```'",
+            'npm install # restore deps',
+            'pnpm install  # sync lockfile',
+            'npm ci && npm test # then: npm install left-pad if it fails',
+        ]
+        powershell = [
+            "git commit -m @'\nfeat: deps\n\nRun `npm install left-pad` before build.\n'@",
+            "Write-Output 'Run `npm i left-pad`'",
+            'Write-Host "Use `npm install left-pad`"',
+        ]
+        for command in bash + powershell:
+            with self.subTest(command=command):
+                self.assertNoPackageAdd(command)
+
+    def test_local_file_installs_are_not_package_adds(self):
+        # Review defect: installing a wheel or tarball from a local path adds no package from a registry.
+        local = ['pip install dist/pkg-1.0-py3-none-any.whl', 'pip install build/pkg-1.0.tar.gz',
+                 'pip install ./dist/pkg-1.0-py3-none-any.whl', 'pip install dist\\pkg-1.0-py3-none-any.whl',
+                 'python -m pip install wheels/pkg-1.0-py3-none-any.whl']
+        real = ['pip install requests', 'pip install git+https://github.com/psf/requests', 'npm install user/repo']
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in local:
+                with self.subTest(command=command):
+                    self.assertNoPackageAdd(command)
+                    self.assertIsNone(standard(command), f'denied in Standard without a plan approval: {command}')
+            for command in real:
+                with self.subTest(command=command):
+                    self.assertIsNotNone(standard(command), f'not denied in Standard without a plan approval: {command}')
+
+    def test_comment_does_not_hide_or_fake_a_package_add(self):
+        # Review defect: an apostrophe in a comment must not pair with a later quote and hide an install, and a # inside
+        # quotes or after a real install is not a comment that hides or fakes one.
+        denied = ["# don't\nnpm install left-pad\necho 'done'",
+                  "echo hi # don't\nnpm install left-pad\necho 'done'",
+                  'echo "a # b" && npm install left-pad']
+        allowed = ["# don't\nnpm install\necho 'done'",
+                   'echo "a # b" && npm ci',
+                   'bash -c "npm install # deps"',
+                   'npm ci # then maybe: npm install left-pad']
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in denied:
+                with self.subTest(denied=command):
+                    reason = standard(command)
+                    self.assertIsNotNone(reason, f'not denied in Standard without a plan approval: {command}')
+                    self.assertIn('package add', (reason or '').lower(), reason)
+            for command in allowed:
+                with self.subTest(allowed=command):
+                    self.assertNoPackageAdd(command)
+
+    def test_nested_shell_forms(self):
+        # Review defect: a package-add inside a nested shell is found whatever the shell's flags and quoting, and prose
+        # quoted inside the nested shell's argument is data.
+        denied = ['pwsh -NoProfile -Command "npm install left-pad"',
+                  'pwsh -nop -c "npm install left-pad"',
+                  'bash --login -c "npm install left-pad"',
+                  "bash -c \"npm install 'left-pad'\""]
+        allowed = ["bash -c \"git commit -m 'docs: npm install left-pad'\"",
+                   "bash -lc \"echo 'npm install left-pad'\"",
+                   'bash -c "git commit -m \\"docs: npm install left-pad\\""',
+                   'pwsh -NoProfile -Command "npm install"']
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in denied:
+                with self.subTest(denied=command):
+                    self.assertPackageAdd(command)
+                    self.assertIsNotNone(standard(command), f'not denied in Standard without a plan approval: {command}')
+            for command in allowed:
+                with self.subTest(allowed=command):
+                    self.assertNoPackageAdd(command)
+
+    def test_unclassifiable_words_are_not_package_adds(self):
+        # Review defect: a word the scan cannot read as a package name (a variable, a process substitution, an escaped
+        # quote in PowerShell prose) is not a package-add.
+        bash = ['npm install $npmArgs', 'npm install 2> >(tee err.log)']
+        # A PowerShell backtick-escaped quote around install text is a known limit (spec.md, correction 10); not asserted.
+        for command in bash:
+            with self.subTest(command=command):
+                self.assertNoPackageAdd(command)
+
+    def test_bash_prose_ending_in_a_backtick_is_not_a_package_add(self):
+        # Spec.md, correction 10: in Bash, a backtick directly before a closing double quote is ordinary prose.
+        commands = ['git commit -m "deps: bump `vite`" -m "Run `pnpm install` after pulling."',
+                    'gh pr create --title "Add `zod`" --body "## Summary\nRun `pnpm install` to sync."',
+                    'gh pr create --title "Pin `left-pad`" --body "Run npm install left-pad@1.3.0 locally"',
+                    'git commit -m "docs: use `npm ci`" && git push']
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertNoPackageAdd(command)
+
+    def test_quoted_option_value_before_the_verb(self):
+        # R3: a quoted option value before the verb does not hide a package-add, and does not make a restore one.
+        adds = ['npm --prefix "my app" install left-pad', 'pnpm --filter "my app" add zod',
+                'pnpm --filter="web app" add zod', 'yarn --cwd "my app" add left-pad', 'pnpm -C "apps/my web" add zod',
+                'uv --directory "my proj" add requests', "bash -c \"pnpm --filter 'a b' add zod\""]
+        restores = ['npm --prefix "my app" install', 'pnpm --filter "my app" install', 'yarn --cwd "my app" install']
+        with tempfile.TemporaryDirectory() as folder:
+            standard = self.packageSession(folder, 'standard')
+            for command in adds:
+                with self.subTest(add=command):
+                    self.assertPackageAdd(command)
+                    self.assertIsNotNone(standard(command), f'not denied in Standard without a plan approval: {command}')
+            for command in restores:
+                with self.subTest(restore=command):
+                    self.assertNoPackageAdd(command)
+
+    def test_text_from_a_variable_is_not_scanned(self):
+        # The value of a variable is not scanned for a package-add; the install is only named where it is assigned.
+        text = ["$msg = 'Run npm install zod'; git commit -m $msg", "m='Run npm install zod'; git commit -m $m",
+                "b='run pip install requests'; gh pr create --title t --body $b", 'm="docs: npm install left-pad"; git commit -m "$m"']
+        for command in text:
+            with self.subTest(command=command):
+                self.assertNoPackageAdd(command)
+        self.assertPackageAdd('npm install left-pad')
+
+    def test_package_scan_adds_no_time_when_no_install_is_named(self):
+        # A quote that never closes and names no install: the package scan alone must return at once.
+        command = 'git status ' + '"' + '\\"' * 24000
+        context = multiprocessing.get_context('spawn')
+        durations = context.Queue()
+        process = context.Process(target=timePackageAdded, args=(command, durations))
+        process.start()
+        process.join(60)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+            self.fail('package scan did not return within 60s')
+        self.assertLess(durations.get(timeout=5), 1, 'package scan took 1s or more on a command that names no install')
+
+    def test_package_add_scan_has_no_slow_repeat_shapes(self):
+        # Review defect: long repeats of one shape must not make the scan slow. Each input runs in its own spawned
+        # process, so a scan that never returns is killed instead of hanging the suite.
+        inputs = {'npm --a repeated': 'npm --a ' * 6250,
+                  'pnpm --filter repeated': 'pnpm --filter ' * 3500,
+                  'apostrophe comment lines then install': "# don't\n" * 5000 + 'npm install',
+                  'lone apostrophes': "'" * 50000,
+                  'bash -c repeated': 'bash -c ' * 6000,
+                  'npm install repeated': 'npm install ' * 4000}
+        context = multiprocessing.get_context('spawn')
+        for name, command in inputs.items():
+            with self.subTest(shape=name):
+                process = context.Process(target=scanWithinTwoSeconds, args=(command,))
+                process.start()
+                process.join(5)
+                if process.is_alive():
+                    process.terminate()
+                    process.join()
+                    self.fail(f'scan did not return within 5s: {name}')
+                self.assertEqual(process.exitcode, 0, f'scan took 2s or more, or failed: {name}')
+
+
+def scanWithinTwoSeconds(aCommand):
+    """Runs in a spawned process: exits 1 when the package-add scan takes 2 seconds or more."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hooks'))
+    import edit_guard as guard
+    start = time.perf_counter()
+    guard.shellWritesOutsideSdlc(aCommand)
+    if time.perf_counter() - start >= 2:
+        sys.exit(1)
+
+
+def timePackageAdded(aCommand, aQueue):
+    """Runs in a spawned process: reports how long packageAdded takes on the command."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hooks'))
+    import edit_guard as guard
+    start = time.perf_counter()
+    guard.packageAdded(aCommand)
+    aQueue.put(time.perf_counter() - start)
 
 
 if __name__ == '__main__':

@@ -87,7 +87,7 @@ Use ai-native-sdlc to resume the change recorded in .sdlc/changes/csv-export/sta
 | Lane | When | Artifacts and checks |
 | --- | --- | --- |
 | Fast | Small, clear, reversible changes without elevated risk | Inline plan, minimal edit, focused verification; no lifecycle files |
-| Standard | Bounded features and ordinary bugs | Specification, plan, state, review, and fresh verification |
+| Standard | Bounded features, ordinary bugs, and any change that adds a third-party dependency or changes the version of one | Specification, plan, state, review, and fresh verification |
 | Controlled | Security, privacy, payments, migrations, production, destructive changes, or cross-service effects | Explicit intent and human gates, independent review, and recovery evidence |
 
 Standard and Controlled work proceed through an ordered checkpoint list approved at the plan gate, each checkpoint passing its gates before the next; Controlled adds two context-isolated reviewers per checkpoint.
@@ -110,13 +110,48 @@ Model selection uses an [on-demand policy](skills/ai-native-sdlc/references/mode
 
 For the software you build with this plugin, planning, verification, and shipping use [the SemVer reference](skills/ai-native-sdlc/references/semver.md). Agents identify the public contract, justify the version bump against the complete release, check version consistency, and preserve released versions. Explicit repository versioning policies are not silently migrated. Ordinary non-release edits do not trigger automatic bumps or publication.
 
+## Security
+
+A plugin runs with your rights, so review it before you trust it. This one ships Markdown skills and, on Claude Code, one hook: `hooks/edit_guard.py`. Claude Code runs a plugin hook with your full user permissions, outside the Bash sandbox. The hook reads the session transcript and `.sdlc/` files, hashes the project's files to see what changed, keeps a small record per session in the plugin's data folder, and makes no network connection; [SECURITY.md](SECURITY.md) has the full list. On Codex the plugin registers no hook. To list what an installed plugin registers on Claude Code, run `claude plugin details ai-native-sdlc`.
+
+An update replaces the files you reviewed. To stay on a reviewed revision, pin the marketplace when you add it:
+
+```sh
+claude plugin marketplace add sofus-nl/ai-native-sdlc@v0.10.0
+codex plugin marketplace add sofus-nl/ai-native-sdlc --ref v0.10.0
+```
+
+- **Claude Code, tag:** the suffix takes a branch or a tag. Auto-update is off by default for a third-party marketplace such as this one; check it under `/plugin` > Marketplaces.
+- **Claude Code, commit:** from Claude Code 2.1.324 the marketplace `ref` also takes the full lowercase SHA of a commit that is on a branch or tag, and a refresh cannot move it. The documentation gives this as a settings source object and shows no command-line form. In `.claude/settings.json`, with the commit you reviewed (here the one behind `v0.9.0`):
+
+  ```json
+  {
+    "extraKnownMarketplaces": {
+      "ai-native-sdlc-marketplace": {
+        "source": {
+          "source": "github",
+          "repo": "sofus-nl/ai-native-sdlc",
+          "ref": "5f69bf2aa1139565d4b2ae8f88779837a5e6b086"
+        }
+      }
+    }
+  }
+  ```
+
+  Start a Claude Code session in that project once, so the marketplace loads, then run `claude plugin install ai-native-sdlc@ai-native-sdlc-marketplace --scope project`. See the [marketplace reference](https://code.claude.com/docs/en/plugins/marketplace-reference) and [plugin security](https://code.claude.com/docs/en/plugins/security).
+- **Codex:** `--ref` pins a Git ref. The [Codex plugin documentation](https://developers.openai.com/plugins/build/plugins) does not say whether it takes a commit SHA.
+
+This project never moves a release tag (see [versioning](docs/versioning.md)). `git ls-remote --tags https://github.com/sofus-nl/ai-native-sdlc` lists the tags; the line that ends in `^{}` shows the commit behind a tag.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
 - **You installed an earlier local version:** it may coexist under `ai-native-sdlc@personal` in Codex. Keep one active copy if duplicate skills appear.
 - **Too much ceremony:** state the actual scope and ask the router to explain its lane choice. A genuinely low-risk edit should use Fast.
 - **Controlled gates skipped on `claude-sonnet-5-5`:** in 0.5.0 behavior checks, this model did not reliably follow Controlled gates such as the separate test author, final verification, and the specification's Reference oracle. It is not yet qualified for Controlled work. Use `claude-sonnet-5` or another qualified model, and confirm that `state.md` records intent, design, and plan approvals before any code changes.
-- **Writes denied with "State the lane" or "records these approvals":** in Claude Code, the plugin's guard hook (`hooks/edit_guard.py`, needs `python` on PATH) blocks file changes until the lane is stated and the active change's `state.md` (the one the session last wrote, or else last read) records the required approvals. Ask the router to state the lane, or record the approval you gave. The guard is not available on Codex.
+- **Writes denied with "State the lane" or "records these approvals":** in Claude Code, the plugin's guard hook (`hooks/edit_guard.py`, needs `python` on PATH) blocks file changes until the lane is stated and the active change's `state.md` (the one the session last wrote, or else last read) records the required approvals. Ask the router to state the lane, or record the approval you gave. A command that adds a package (`npm install <package>`, `pip install <package>`, and the like) counts as such a file change: it needs a stated lane, and in Standard and Controlled work the approvals. A restore such as `npm ci` does not count. The guard is not available on Codex.
 - **A probe, benchmark, or other throwaway file denied before the plan is approved:** such files are open in two places. One is the system temp folder. The other is any file that Git ignores, so a scratch folder inside the project needs one line in `.gitignore` (for example `.scratch/`). They do not belong under `.sdlc/`.
 - **A `state.md` write denied with "records status: verified only after":** in Standard and Controlled work, the guard lets the agent record `status: verified` only after it invoked the verify skill in the same session, on the files its last review saw. The message names the skill to invoke and the files that changed since the review; if one of those is test output and not code, remove it or let Git ignore it. If you verified the change yourself, edit `state.md` by hand.
 - **Writes denied with "guard failed", or a hook error that says "guard is inactive":** the guard hook itself hit an error. "Guard failed" denies the write because the session uses the plugin and the approvals could not be checked; "guard is inactive" blocks nothing. Both name the cause. Report it in an issue; to continue meanwhile, disable the plugin.
@@ -135,7 +170,7 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Follow [Semantic Versioning 2.0.0](https://semver.org/) using the [public API and release policy](docs/versioning.md). Run `python scripts/check_version.py` to check version syntax, manifest alignment, and the current changelog entry; CI runs the same check. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
-Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. On Claude Code, `claude plugin eval` runs 17 of the 19 behavior cases (those in `evals/`) with one command. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
+Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. On Claude Code, `claude plugin eval` runs 20 of the 22 behavior cases (those in `evals/`) with one command. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
 
 ## License and acknowledgments
 
