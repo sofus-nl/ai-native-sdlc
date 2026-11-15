@@ -42,6 +42,19 @@ class SkillFilesTest(unittest.TestCase):
             any(re.search(r'dependenc', c, FLAGS) and re.search(r'at least\s+standard', c, FLAGS) for c in chunks(text)),
             'no paragraph or list item ties a dependency change to "at least Standard"')
 
+    def test_router_points_at_the_dependency_record(self):
+        folder = SKILLS / 'ai-native-sdlc'
+        text = (folder / 'SKILL.md').read_text(encoding='utf-8')
+        lane = [c for c in chunks(text) if re.search(r'dependenc', c, FLAGS) and re.search(r'at least\s+standard', c, FLAGS)]
+        self.assertTrue(lane, 'no paragraph or list item ties a dependency change to "at least Standard"')
+        self.assertTrue(
+            any(re.search(r'dependency record', c, FLAGS)
+                and any((folder / t).resolve() == SECURITY.resolve() and SECURITY.is_file()
+                        for t in re.findall(r'[\w./-]*security\.md', c))
+                for c in lane),
+            'the chunk that ties a dependency change to "at least Standard" must link a security.md that resolves '
+            'to references/security.md and mention the dependency record')
+
     def test_router_reports_outside_instructions_and_does_not_follow_them(self):
         text = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
         self.assertTrue(

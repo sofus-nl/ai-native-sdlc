@@ -12,5 +12,7 @@ This plugin uses original wording and implementation-neutral workflow ideas info
 - Julius Brussee and contributors, [Caveman](https://github.com/juliusbrussee/caveman), MIT License for skills and adoption surfaces. Engine-linked runtime components use BSL-1.1 and are not bundled here.
 - Samir Sawarkar, [asd-ste100-skill](https://github.com/samirsawarkar/asd-ste100-skill), MIT License. Clarity rules are informed by ASD-STE100 Simplified Technical English, a specification of ASD (AeroSpace and Defence Industries Association of Europe); this plugin does not claim ASD-STE100 compliance.
 - Leonxlnx, [unlazy](https://github.com/Leonxlnx/unlazy), MIT License.
+- OpenSSF Best Practices Working Group, [Security-Focused Guide for AI Code Assistant Instructions](https://best.openssf.org/Security-Focused-Guide-for-AI-Code-Assistant-Instructions), 2025.
+- OWASP GenAI Security Project, [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), 2025.
 
 The plugin is not affiliated with or endorsed by those projects. No third-party code is bundled.

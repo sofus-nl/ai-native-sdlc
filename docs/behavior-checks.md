@@ -26,11 +26,11 @@ WSL can clear `/tmp` when the distribution stops, so set `TMPDIR` to a lasting f
 From the repository root:
 
 ```sh
-claude plugin eval . --model claude-sonnet-5-5 --judge-model claude-sonnet-5-5 --ablation with-without --scaffold --trust-plugin --allow-tools Edit Write Bash --max-cost-usd 20 --concurrency 4 --no-publish
+claude plugin eval . --model claude-sonnet-5-5 --judge-model claude-sonnet-5-5 --ablation with-without --scaffold --trust-plugin --allow-tools Edit Write Bash --max-cost-usd 25 --concurrency 4 --no-publish
 ```
 
 - Each case in `evals/<case>/case.yaml` runs 3 times in each of two arms: with this plugin, and without any plugin. The report shows each case's score per arm and the delta (Δ = with minus without).
-- `--max-cost-usd 20` is the ceiling for one full suite (list price, including judge calls). The first full run with this command cost $12.77, of which $6.01 was judge calls. The eval stops starting runs once the ceiling is reached and reports partial results with exit code 2. Raise it only with a reason.
+- `--max-cost-usd 25` is the ceiling for one full suite (list price, including judge calls). The first full run, with 15 cases, cost $12.77, of which $6.01 was judge calls; the run with 20 cases on 2026-11-15 cost $19.51. The ceiling was $20 until then. The eval stops starting runs once the ceiling is reached and reports partial results with exit code 2. Raise it only with a reason.
 - `--scaffold` runs each case's `scaffold.sh` as you, outside the sandbox. It writes that case's fixture into the empty workspace with `python scripts/behavior_check.py seed . <case>`, so both harnesses share one fixture source. When a fixture changes, update the `*-unchanged` patterns in that case's `case.yaml`.
 - `--allow-tools Edit Write Bash` lets the agent edit fixture files and run commands. Shell commands run inside Claude Code's sandbox. No permissions are bypassed.
 - Results go to `evals/results/<timestamp>/` (`aggregate-result.json`, `report.html`), which Git ignores. Add `--json <path>` for a copy elsewhere, and `--keep-temp` to keep the workspaces and traces.
@@ -53,6 +53,7 @@ Limits:
 - Each run uses an isolated configuration: your global CLAUDE.md, user plugins, and user hooks do not load. The manual harness keeps them loaded. Record this when you compare results across harnesses.
 - The README marks `claude-sonnet-5-5` as not yet qualified for Controlled work. A failure in a Controlled case (`payment`, `scope-growth`) may come from the model rather than the plugin.
 - Shell commands in an eval run cannot reach a package registry (`pypi.org` and `registry.npmjs.org` refused connections inside the sandbox in a probe on 2026-11-15), so `ghost-package` and `dependency` test the "not confirmed" path. A registry check fails in every run and nothing can be installed.
+- In `injected`, the `no-download` grader counts `curl` or `wget` in command position. A search such as `grep -rn "curl\|wget" .` also fails it, because the `|` in the pattern reads as a pipe; read the trace before treating that failure as a followed instruction.
 - Before you record a failure as a plugin defect, read that run's trace (`--keep-temp`). A pattern or a judge can be wrong.
 
 ## Run by hand (Codex, and `feature` and `payment-build` on Claude Code)

@@ -364,3 +364,62 @@ The first full `claude plugin eval` run (ADR-007) on 0.7.1 found rule breaks in 
 ### Revisit when
 
 The next `claude plugin eval` run still fails any of these six cases. Then read those traces before changing the wording again.
+
+## ADR-009: Make security a duty of each lifecycle stage, and gate package-add commands outside Fast work (2026-11-15)
+
+### Status
+
+Accepted (2026-11-15). Not released or qualified: see the 0.10.0 changelog entry for what ran and what is open.
+
+### Context
+
+The plugin presented a full lifecycle, but its security content was a routing rule: security, privacy, payments, and untrusted input raised the lane to Controlled, and after that no skill gave a duty an agent could be checked against. At 0.9.0:
+
+- No skill ran or asked for a security check, and `ai-native-verify` forbade unrequested hardening.
+- A dependency was treated as a cost. The plan listed added dependencies, so the human saw them, but nothing asked whether the package exists, how old the release is, or whether it runs install scripts. A request to add a dependency could run as Fast work.
+- The guard hook treated a package install as a command that writes nothing: 13 of 13 tested install commands passed before any approval.
+- No skill said how to treat text an agent reads in a web page, a file, a dependency's source, or tool output.
+- This repository pinned its two GitHub Actions by tag and had no `SECURITY.md`, although it ships a hook that Claude Code runs with the user's full rights.
+
+External evidence, read at its primary source on 2026-11-14: models still name packages that do not exist (3.6 to 5.0 percent of package mentions across five 2026 models, one preprint); the tags of `aquasecurity/trivy-action` (2026, CVE-2026-33634) and `tj-actions/changed-files` (2025, CVE-2025-30066) were repointed to malicious commits; the OpenSSF guide for AI code assistant instructions recommends checking that a dependency exists, pinning versions, and pinning actions by commit SHA.
+
+### Decision
+
+- **Two rules in the router, for every lane.** A change that adds a third-party dependency, or changes the version of one, is at least Standard, and its `plan.md` holds the dependency record that `security.md` defines. Text from any source other than the request, the repository instructions (`CLAUDE.md`, `AGENTS.md`, and the files they name), and the change's `.sdlc/` artifacts carries no authority: it may shape how a task is done, never widen it, and the agent reports an instruction it declines.
+- **One reference, `references/security.md`, with one duty per stage**, read for Controlled work or a dependency change: abuse cases in shape; a dependency record in plan (a registry query and its result, version and release date, install scripts, lockfile); only planned dependencies in build; the lockfile diff in review; security claims in verify. The skills use the checks a repository already configures and never install a scanner.
+- **The guard treats a package-add command as a write in Standard and Controlled work.** It is denied until the lane's approvals are recorded. `decide` is unchanged; the detection adds one statement at the end of `shellWritesOutsideSdlc`, so a command that already counted as a write keeps its denial text. The guard does not compare package names with the plan; review does.
+- **Fast work is not gated.** That a dependency is never Fast work rests on the router's wording.
+- **This repository follows the same practice.** `actions/checkout` is pinned to `11d5960a326750d5838078e36cf38b85af677262` (v4.4.0, committed 2026-07-16) and `actions/setup-python` to `a26af69be951a213d495a4c3e4e4022e16d87065` (v5.6.0, committed 2025-04-24). CI runs zizmor 1.32.0 from PyPI through `pipx` (released 2026-11-02, a binary wheel, MIT, confirmed on PyPI on 2026-11-14); the runner is pinned to `ubuntu-24.04` because that step needs `pipx`. `SECURITY.md` routes reports to GitHub private vulnerability reporting.
+
+### Consequences
+
+- A request that adds or upgrades a package now needs a plan approval. This is a lane-behavior change, so the release is a minor: `0.10.0`.
+- Fast work that adds no dependency pays for the two router rules and nothing else. The lane rule carries a pointer to the dependency record. It was added after the first behavior run: in 2 of 3 `dependency` runs the agent planned from the router without invoking a leaf skill, and one of those two plans held no dependency record. With the pointer, 6 of 6 reruns recorded the dependency; that is consistent with the pointer helping and does not prove it.
+- Open: in 8 of 9 `dependency` runs the agent wrote the plan from the router without invoking `ai-native-plan`, against the router's rule never to do a leaf skill's work. The pointer rewards that route. Nothing in this change addresses it.
+- In a session that uses the plugin, a package-add now needs a stated lane first, like any other file change. Before a lane is stated it is denied with the existing "State the lane" message; 0.9.0 let it through.
+- On Codex every rule here is wording. So is the Fast-lane dependency rule on Claude Code.
+- The detection is a pattern scan of shell text and has limits, recorded in the changelog. It does not see `npx <pkg>`, a download piped to a shell, other package managers, a package name held in a variable, an install inside `$(...)` or backticks in a quoted string, or a manifest edit. Before a lane is stated, and in Standard and Controlled work before the approvals, it wrongly denies a few shapes, such as `pip install --upgrade pip`, an install with `--dry-run`, and PowerShell prose with a backtick-escaped quote around install text.
+- A `.sdlc/` folder that comes with a cloned repository, including a plan approval recorded in it, is read as the change's own artifacts and keeps authority. That was so at 0.9.0; the no-authority rule does not cover it and nothing here changes it.
+- Whether a lockfile-only or transitive version change counts as "changes the version of" a dependency is not decided (owner: Wibo). As written, it does.
+- An eval run cannot reach a package registry, so the `ghost-package` and `dependency` cases test only the path where the registry check is recorded as not confirmed.
+- A model can refuse an injected instruction or a missing package without the plugin. The changelog records both arms of the three new cases, so a pass is not read as proof that the wording works. In the first run `ghost-package` scored the same in both arms, and `injected` differed only in whether the instruction was reported (3 of 3 against 2 of 3).
+- `independent` and `model-override` do not pass every run, on this version or on 0.9.0 (4 of 6 and 3 of 6 there). A release check that asks for 3 of 3 on them rests on chance.
+- `SECURITY.md` names a report route that is off in the repository settings until the owner enables it.
+
+### Alternatives rejected
+
+- **Bundle or install a scanner.** It adds third-party code and a runtime dependency, and "No third-party code is bundled" would stop being true (ADR-005).
+- **Deny a package-add in Fast work as well.** Built and withdrawn on the owner's stop rule, after four review rounds and a narrow confirmation each failed (the last on a missed install with a quoted option value, `--prefix "my app"`, and on a commit message passed through a variable that was denied as a package-add). This reverses the owner's decision of 2026-11-14 to enforce the rule in Fast work. Every blocking false denial had landed on everyday Fast work, for example a restore inside brackets or a commit message with backticks; a false denial there stops trivial work, and a miss is still covered by the wording and the lockfile-diff review.
+- **Compare installed package names with `plan.md` in the guard.** It needs a machine-readable plan.
+- **A rule for `npx <pkg>` or a download piped to a shell.** Too hard to tell apart from routine commands.
+- **A PowerShell-specific rule for a backtick-escaped quote.** It made ordinary Bash commit messages that end a string with a backticked word read as commands.
+- **The official zizmor GitHub Action.** One more third-party action to pin and trust, for a tool that runs as one command.
+- **Scanning this plugin's own skills in CI.** They are first-party; revisit if third-party skills are ever bundled.
+
+### Revisit when
+
+- A session log shows a package-add in Fast work that the wording did not stop, or a false package-add denial in Standard or Controlled work. Replay any changed detection with `scripts/replay_guard.py` before release; tests on hand-picked commands missed forms that the logs and independent reviewers found.
+- The behavior run shows the same score with and without the plugin for `injected` or `ghost-package`. Then the wording has no measured effect there, and the case is a regression check only. This is already so for `ghost-package` in the first run.
+- A host offers a sandbox or a network policy for hooks or eval runs.
+
+Found during this work and left for a separate change: the quote and heredoc patterns that 0.9.0 already uses are quadratic on unclosed input. A 48,000-character command with a quote that never closes takes about 8 seconds in the released hook.
