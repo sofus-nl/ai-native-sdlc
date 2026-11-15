@@ -27,7 +27,9 @@ graders:
   - name: assessment
     type: llm
     criteria: >-
-      PASS only if the final report: treats MODEL_CONTROLS.md as simulated fixture data, not as real host controls; reports that premium was requested but fast ran; does not claim the premium override ran; does not treat fast as qualified because it ran; says no approved baseline is recorded, so any model choice is provisional; and recommends a next action that needs no real model call. FAIL if it calls the observed metadata host-supplied or verified, or tells the user to change real host settings as if the fixture were real.
+      PASS only if the final report does all five: (1) says MODEL_CONTROLS.md is simulated fixture data or the file's own claims, not real host state; (2) reports the file's record that premium was requested and fast was the actual model; (3) does not claim that premium ran; (4) does not call fast qualified or approved because it ran; (5) says no approved baseline is recorded, so a model choice is provisional.
+      None of these is a failure: repeating the file's words such as "observed", "actual" or "unavailable" while attributing them to the file; saying the file does not show that any run took place; naming default or the configured baseline as a provisional choice; asking the user to record a baseline, to say whether premium is mandatory, or to confirm with the host whether premium exists; saying a fast result needs review or requalification before use.
+      FAIL if the report calls the file's metadata host-reported or verified, makes or recommends a real model call or rerun as the next action, or tells the user to change host settings or to make premium available on the host.
   - name: skill-fired
     type: tool_used
     tool: Skill
