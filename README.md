@@ -87,7 +87,7 @@ Use ai-native-sdlc to resume the change recorded in .sdlc/changes/csv-export/sta
 | Lane | When | Artifacts and checks |
 | --- | --- | --- |
 | Fast | Small, clear, reversible changes without elevated risk | Inline plan, minimal edit, focused verification; no lifecycle files |
-| Standard | Bounded features and ordinary bugs | Specification, plan, state, review, and fresh verification |
+| Standard | Bounded features, ordinary bugs, and any change that adds a third-party dependency or changes the version of one | Specification, plan, state, review, and fresh verification |
 | Controlled | Security, privacy, payments, migrations, production, destructive changes, or cross-service effects | Explicit intent and human gates, independent review, and recovery evidence |
 
 Standard and Controlled work proceed through an ordered checkpoint list approved at the plan gate, each checkpoint passing its gates before the next; Controlled adds two context-isolated reviewers per checkpoint.

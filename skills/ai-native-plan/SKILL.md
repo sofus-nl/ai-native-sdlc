@@ -12,7 +12,7 @@ Stop when the selected lane's required source artifact or approval is absent, ex
 
 1. Read the accepted source artifact and repository instructions.
 2. Investigate the real flow end to end: entry points, shared functions, callers, data boundaries, tests, configuration, and release path. For a bug, reproduce or collect direct evidence before designing the fix.
-3. Apply the solution ladder in `../ai-native-sdlc/references/economy.md`. Record a new dependency or abstraction only when earlier rungs cannot meet acceptance.
+3. Apply the solution ladder in `../ai-native-sdlc/references/economy.md`. Record a new dependency or abstraction only when earlier rungs cannot meet acceptance. For Controlled work or a change that adds a third-party dependency or changes the version of one, apply the Plan duty in `../ai-native-sdlc/references/security.md`.
 4. Identify the earliest layer that must change and the smallest coherent blast radius. Record alternatives only when they were plausible.
 5. Write `plan.md` using `../ai-native-sdlc/references/artifact-contracts.md`.
 6. Map every acceptance ID to proof. For a bug, the proof must fail for the observed defect before the fix when feasible. For UI, include an observable visual check. For integration risk, put a thin tracer slice first.

@@ -14,7 +14,7 @@ Use for a small, reversible, well-specified edit with no security, privacy, mone
 
 ### Standard
 
-Use for ordinary bugs and bounded features.
+Use for ordinary bugs and bounded features, and for any change that adds a third-party dependency or changes the version of one.
 
 - Preserve accepted intent and acceptance criteria in `.sdlc/changes/<slug>/spec.md`; use `intent.md` when the request is materially ambiguous.
 - Create `plan.md` and `state.md` before implementation.
