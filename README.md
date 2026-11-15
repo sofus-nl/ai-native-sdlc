@@ -110,6 +110,41 @@ Model selection uses an [on-demand policy](skills/ai-native-sdlc/references/mode
 
 For the software you build with this plugin, planning, verification, and shipping use [the SemVer reference](skills/ai-native-sdlc/references/semver.md). Agents identify the public contract, justify the version bump against the complete release, check version consistency, and preserve released versions. Explicit repository versioning policies are not silently migrated. Ordinary non-release edits do not trigger automatic bumps or publication.
 
+## Security
+
+A plugin runs with your rights, so review it before you trust it. This one ships Markdown skills and, on Claude Code, one hook: `hooks/edit_guard.py`. Claude Code runs a plugin hook with your full user permissions, outside the Bash sandbox. The hook reads the session transcript and `.sdlc/` files, hashes the project's files to see what changed, keeps a small record per session in the plugin's data folder, and makes no network connection; [SECURITY.md](SECURITY.md) has the full list. On Codex the plugin registers no hook. To list what an installed plugin registers on Claude Code, run `claude plugin details ai-native-sdlc`.
+
+An update replaces the files you reviewed. To stay on a reviewed revision, pin the marketplace when you add it:
+
+```sh
+claude plugin marketplace add sofus-nl/ai-native-sdlc@v0.9.0
+codex plugin marketplace add sofus-nl/ai-native-sdlc --ref v0.9.0
+```
+
+- **Claude Code, tag:** the suffix takes a branch or a tag. Auto-update is off by default for a third-party marketplace such as this one; check it under `/plugin` > Marketplaces.
+- **Claude Code, commit:** from Claude Code 2.1.324 the marketplace `ref` also takes the full lowercase SHA of a commit that is on a branch or tag, and a refresh cannot move it. The documentation gives this as a settings source object and shows no command-line form. In `.claude/settings.json`, with the commit you reviewed (here the one behind `v0.9.0`):
+
+  ```json
+  {
+    "extraKnownMarketplaces": {
+      "ai-native-sdlc-marketplace": {
+        "source": {
+          "source": "github",
+          "repo": "sofus-nl/ai-native-sdlc",
+          "ref": "5f69bf2aa1139565d4b2ae8f88779837a5e6b086"
+        }
+      }
+    }
+  }
+  ```
+
+  Start a Claude Code session in that project once, so the marketplace loads, then run `claude plugin install ai-native-sdlc@ai-native-sdlc-marketplace --scope project`. See the [marketplace reference](https://code.claude.com/docs/en/plugins/marketplace-reference) and [plugin security](https://code.claude.com/docs/en/plugins/security).
+- **Codex:** `--ref` pins a Git ref. The [Codex plugin documentation](https://developers.openai.com/plugins/build/plugins) does not say whether it takes a commit SHA.
+
+This project never moves a release tag (see [versioning](docs/versioning.md)). `git ls-remote --tags https://github.com/sofus-nl/ai-native-sdlc` lists the tags; the line that ends in `^{}` shows the commit behind a tag.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
