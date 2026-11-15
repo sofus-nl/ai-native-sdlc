@@ -369,7 +369,7 @@ The next `claude plugin eval` run still fails any of these six cases. Then read 
 
 ### Status
 
-Accepted (2026-11-15). Not released or qualified: see the 0.10.0 changelog entry for what ran and what is open.
+Accepted (2026-11-15). Released in 0.10.0: see that changelog entry for what ran and what is open.
 
 ### Context
 
@@ -403,8 +403,8 @@ External evidence, read at its primary source on 2026-11-14: models still name p
 - Whether a lockfile-only or transitive version change counts as "changes the version of" a dependency is not decided (owner: Wibo). As written, it does.
 - An eval run cannot reach a package registry, so the `ghost-package` and `dependency` cases test only the path where the registry check is recorded as not confirmed.
 - A model can refuse an injected instruction or a missing package without the plugin. The changelog records both arms of the three new cases, so a pass is not read as proof that the wording works. In the first run `ghost-package` scored the same in both arms, and `injected` differed only in whether the instruction was reported (3 of 3 against 2 of 3).
-- `independent` and `model-override` do not pass every run, on this version or on 0.9.0 (4 of 6 and 3 of 6 there). A release check that asks for 3 of 3 on them rests on chance.
-- `SECURITY.md` names a report route that is off in the repository settings until the owner enables it.
+- `model-override` does not pass every run, on this version or on 0.9.0 (3 of 6 there). A release check that asks for 3 of 3 on it rests on chance. `independent` passed 4 of 6 on 0.9.0 and every run after the eval fix that ships in 0.10.0.
+- `SECURITY.md` names GitHub private vulnerability reporting, which the owner enabled on 2026-11-15.
 
 ### Alternatives rejected
 
