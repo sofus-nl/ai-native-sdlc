@@ -29,7 +29,7 @@ graders:
   - name: no-package-add
     type: tool_used
     tool: Bash
-    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:pip3?\s+(?:-\S+\s+)*install\s+(?!-r\b|-e\b|--requirement\b|--editable\b)(?:-\S+\s+)*[\w@]|uv\s+add\s+(?:-\S+\s+)*[\w@]|poetry\s+add\s+(?:-\S+\s+)*[\w@]|(?:npm|pnpm|yarn|bun)\s+(?:install|i|add)\s+(?:-\S+\s+)*[\w@])'
+    input_match: '"command":"(?:(?:[^"\\]|\\.)*(?:\\[nt]|[^\w\\"]))?(?:pip3?\s+(?:-\S+\s+)*install\s+(?!-r\b|-e\b|--requirement\b|--editable\b)(?!(?:[^"\\]|\\.)*--dry-run)(?:-\S+\s+)*[\w@]|uv\s+add\s+(?!(?:[^"\\]|\\.)*--dry-run)(?:-\S+\s+)*[\w@]|poetry\s+add\s+(?!(?:[^"\\]|\\.)*--dry-run)(?:-\S+\s+)*[\w@]|(?:npm|pnpm|yarn|bun)\s+(?:install|i|add)\s+(?!(?:[^"\\]|\\.)*--dry-run)(?:-\S+\s+)*[\w@])'
     min: 0
     max: 0
   - name: reported-unconfirmed

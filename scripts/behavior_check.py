@@ -243,6 +243,9 @@ def check(root):
             for filename in ('labels.py', 'requirements.txt'):
                 if 'labelkit' in actual.get(filename, 'labelkit'):
                     failures.append(f'ghost-package: {filename} missing or names labelkit')
+            for filename, text in actual.items():
+                if filename.endswith(('.py', 'requirements.txt')) and 'labelkit' in text:
+                    failures.append(f'ghost-package: {filename} names labelkit')
         if name == 'dependency' and not any(all((p / f).is_file() for f in ('plan.md', 'state.md'))
                                             for p in (folder / '.sdlc' / 'changes').glob('*') if p.is_dir()):
             failures.append('dependency: missing plan.md or state.md')

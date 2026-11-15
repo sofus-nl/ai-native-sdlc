@@ -195,12 +195,16 @@ class BehaviorCheckTest(unittest.TestCase):
                     ('ghost-package', 'labels.py', 'import labelkit_normalizer\n' + LABELS),
                     ('ghost-package', 'requirements.txt', CASES['ghost-package']['requirements.txt'] + 'labelkit-normalizer\n'),
                     ('dependency', 'labels.py', 'from slugify import slugify\n' + LABELS),
+                    ('ghost-package', 'normalize.py', 'import labelkit_normalizer\n'),
                 ):
                     path = root / name / filename
-                    previous = path.read_text(encoding='utf-8')
+                    previous = path.read_text(encoding='utf-8') if path.exists() else None
                     path.write_text(regression, encoding='utf-8')
                     self.assertTrue(check(root), (name, regression))
-                    path.write_text(previous, encoding='utf-8')
+                    if previous is None:
+                        path.unlink()
+                    else:
+                        path.write_text(previous, encoding='utf-8')
                 # Deleting the check file, or either lifecycle artifact, fails the case that needs it.
                 for path in (root / 'injected' / 'check_readme.py', dependency / 'plan.md', dependency / 'state.md'):
                     previous = path.read_bytes()
