@@ -37,6 +37,42 @@ INTERPRETER = re.compile(r'(?<![\w.-])(?:python[\d.]*|py|node|deno|bun|npx|tsx|t
 CD = re.compile(r'(?<![\w.-])(?:cd|pushd|popd|chdir|sl|Set-Location|Push-Location|Pop-Location)(?![\w.-])|\s-C\s', re.I)
 # The option of cp and Copy-Item that names the destination.
 DESTINATION = re.compile(r'(?:-[A-Za-z]*t|(?i:--target-directory|-Destination))(?=$|[=:])')
+# A command that adds a package: the groups name the package manager. Options may stand before the verb
+# (`pnpm --filter web add zod`), each with or without a value.
+BEFORE_VERB = r'(?:\s+-{1,2}\w[\w-]*(?:=\S+|\s+(?![-<>|&;])\S+)?){0,8}?'
+# Every package-add holds both of these somewhere; they are the cheap test that comes before the scan.
+PACKAGE_MANAGER = re.compile(r'\b(?:npm|pnpm|yarn|bun|uv|poetry|cargo|pip|go)', re.I)
+PACKAGE_VERB = re.compile(r'\b(?:install|i|add|get)\b', re.I)
+# A nested shell whose code option follows other options: `pwsh -NoProfile -Command "..."`, `bash --login -c "..."`.
+NESTED_OPTIONS = re.compile(r'(?<![\w.-])(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|wsl)(?:\.exe)?(?:\s+-{1,2}\w[\w-]*){1,8}?'
+                            r'\s+(?:-\w*c\b|-Command\b|/c\b)', re.I)
+PACKAGE_ADD = re.compile(r'(?<![\w.-])(?:(npm|pnpm|yarn|bun)(?:\.cmd|\.exe)?' + BEFORE_VERB + r'\s+(?:install|i|add)'
+                         r'|(uv|poetry|cargo)(?:\.exe)?' + BEFORE_VERB + r'\s+add'
+                         r'|(pip)[\d.]*(?:\.exe)?\s+install|(go)(?:\.exe)?\s+get)(?![\w-])', re.I)
+# Options whose next word is a value, per package manager, and options that take none. Any other option is read as
+# taking the next word, so an unknown option can hide a package (a miss) and never turns a restore into a denial.
+PACKAGE_VALUES = {
+    'npm': '--prefix -w --workspace --registry --cache --userconfig --tag',
+    'pnpm': '--filter -F --dir -C --registry --store-dir --virtual-store-dir',
+    'yarn': '--cwd --registry --modules-folder',
+    'bun': '--cwd --registry',
+    'pip': '-r --requirement -e --editable -c --constraint -t --target -i --index-url --extra-index-url --prefix --root '
+           '--python -f --find-links --trusted-host --platform --python-version --implementation --abi --only-binary '
+           '--no-binary --src --upgrade-strategy --progress-bar --cert --client-cert --proxy --retries --timeout --log '
+           '--cache-dir -C --config-settings',
+    'uv': '--index --index-url --extra-index-url --extra --group --optional --python -p --directory --project --tag --branch --rev',
+    'poetry': '--group -G --extras -E --source --python --platform --directory -C',
+    'cargo': '--features -F --package -p --manifest-path --rename --registry --git --branch --tag --rev --path --target',
+    'go': '',
+}
+PACKAGE_FLAGS = set(
+    '-D --save-dev -E --save-exact -S --save -P --save-prod -O --save-optional --save-peer -g --global -w --workspace-root -W '
+    '--ignore-workspace-root-check -d --dev --peer --optional --exact --tilde -T --frozen-lockfile --no-audit --no-fund '
+    '--force --legacy-peer-deps --ignore-scripts --no-save --prefer-offline --offline -q --quiet -v --verbose -U --upgrade '
+    '--user --no-deps --pre --no-cache-dir --disable-pip-version-check --break-system-packages -y --yes --dry-run --no-input '
+    '--isolated --require-virtualenv --force-reinstall -I --ignore-installed --no-build-isolation --no-dev --no-sync '
+    '--frozen --locked --build --no-lockfile --production --prod -s --silent --json --no-progress --no-color -u -t -x '
+    '--no-default-features --allow-prereleases --lock'.split())
 STATE = r'\.sdlc[\\/]+changes[\\/]+[\w.-]+[\\/]+state\.md'
 STATE_FILE = re.compile(STATE + '$')
 STATE_TOKEN = re.compile(r'[^\s"\'`;&|<>]{0,512}' + STATE + r'(?![\w.])')
@@ -84,6 +120,95 @@ def expandVars(aCommand):
         # A name assigned more than once may depend on a condition, so it stays unresolved.
         return known[-1] if len(known) == 1 == sum(n == name for _, n, _ in assigns) else aMatch.group()
     return re.sub(r'\$(?:env:)?(\w+)|\$\{(\w+)\}', value, aCommand)
+
+
+def packageAdd(aSegment, aUnquote=str):
+    """Return the package this command segment adds, or '' for a restore, a local install, or another command."""
+    found = PACKAGE_ADD.search(aSegment)
+    if not found:
+        return ''
+    manager = next(g for g in found.groups() if g).lower()
+    values = set(PACKAGE_VALUES[manager].split())
+    # The command ends at a closing bracket or brace, `(npm install)`, `if (...) { npm install } else { ... }`, at a
+    # PowerShell block comment, and at a process substitution, `2> >(tee err.log)`.
+    rest = re.split(r'[)}]|<#|[<>]\(', aSegment[found.end():], maxsplit=1)[0]
+    # A redirection is not a package: `npm install 2>&1` reaches here as `npm install 2>`, and PowerShell has `*>`.
+    words = [aUnquote(w).strip('"\'`(){}') for w in re.sub(r'(?<![\w*])[\d*]*[<>]+\s*[^\s<>]*', ' ', rest).split()]
+    skip = False
+    for word in words:
+        if not word:
+            continue
+        # A word that starts with `-` is an option, also right after an option that takes a value.
+        if skip and not word.startswith('-'):
+            skip = False
+        elif word.startswith('-'):
+            # `--target=dir` carries its value; a known flag takes none; any other option takes the next word.
+            skip = '=' not in word and (word in values or word not in PACKAGE_FLAGS)
+        elif word.startswith('$'):
+            # A variable holds anything: options, a path, nothing.
+            continue
+        # A local path is not a package. For pip, a word with a slash is a file (`dist/pkg.whl`) unless it is a URL;
+        # for npm, `user/repo` is a package on GitHub.
+        elif not (re.match(r'[./~\\]|[A-Za-z]:', word)
+                  or manager == 'pip' and re.search(r'[/\\]', word) and '://' not in word):
+            return word
+    return ''
+
+
+def dropComments(aText):
+    """Remove the shell comments that stand outside quotes, so a quote inside a comment pairs with nothing."""
+    kept, quote, at, size = [], '', 0, len(aText)
+    while at < size:
+        char = aText[at]
+        if char == '\\' and quote != "'" and at + 1 < size:
+            kept.append(aText[at:at + 2])
+            at += 2
+            continue
+        if quote:
+            quote = '' if char == quote else quote
+        elif char in '\'"':
+            quote = char
+        elif char == '#' and (not at or aText[at - 1] in ' \t\n;&|('):
+            end = aText.find('\n', at)
+            at = size if end < 0 else end
+            continue
+        kept.append(char)
+        at += 1
+    return ''.join(kept)
+
+
+def packageAdded(aCommand):
+    """Return the first package the command adds, or ''. Quoted text is data (a commit message that names an
+    install), unless a nested shell runs it (`bash -c "..."`); a comment is not scanned. The command is read as
+    typed: the value of a variable is not scanned."""
+    # ponytail: a `$(...)` or backtick span inside a quoted string is not scanned, because the same characters are
+    # prose in a commit message or a PowerShell string; such an install slips past. A PowerShell quote that a
+    # backtick escapes ends the string here, so prose around it can read as a command.
+    command = str(aCommand).replace('\0', '')
+    # A command that names no package manager or no add verb costs nothing more.
+    if not (PACKAGE_MANAGER.search(command) and PACKAGE_VERB.search(command)):
+        return ''
+    aOuter = HEREDOC.sub(r'<<\2', command)
+    hidden, split = [], r'&&|\|\||[;&|\n]'
+
+    def hide(aMatch):
+        # Only the delimiters go: a quote at the end of the content belongs to a string inside it.
+        text = aMatch.group()
+        hidden.append(text[2:-2] if text[0] == '@' else text[1:-1])
+        return f'\0{len(hidden) - 1}\0'
+
+    def shown(aToken):
+        return re.sub(r'\0(\d+)\0', lambda m: hidden[int(m.group(1))] if int(m.group(1)) < len(hidden) else '', aToken)
+    for part in re.split(split, QUOTED.sub(hide, dropComments(aOuter))):
+        nested = NESTED.search(part) or NESTED_OPTIONS.search(part)
+        ran = [shown(n) for n in re.findall(r'\0\d+\0', part[nested.end():])] if nested else []
+        # Quoted text inside the nested command is data again.
+        inner = [t for r in ran for t in re.split(split, QUOTED.sub(hide, dropComments(r.replace('\\"', '"'))))]
+        for text in [part] + inner:
+            added = packageAdd(text, shown)
+            if added:
+                return added
+    return ''
 
 
 def shellWritesOutsideSdlc(aCommand, aRoots=()):
@@ -152,7 +277,11 @@ def shellWritesOutsideSdlc(aCommand, aRoots=()):
             return found.group(1)
     # A script write inside quoted text is data, unless an interpreter or heredoc could run it.
     found = SCRIPT_WRITE.search(str(aCommand) if runs or INTERPRETER.search(bare) or '<<' in bare else bare)
-    return found.group() if found else ''
+    if found:
+        return found.group()
+    # A package-add comes last, so a command with another write keeps the reason it always had.
+    added = packageAdded(aCommand)
+    return f'package add: {added}' if added else ''
 
 
 def statePath(aToken):
