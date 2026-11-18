@@ -423,3 +423,44 @@ External evidence, read at its primary source on 2026-11-14: models still name p
 - A host offers a sandbox or a network policy for hooks or eval runs.
 
 Found during this work and left for a separate change: the quote and heredoc patterns that 0.9.0 already uses are quadratic on unclosed input. A 48,000-character command with a quote that never closes takes about 8 seconds in the released hook.
+
+## ADR-010: Adopt five practices from a review of pstack, and reject its autonomy rules (2026-11-18)
+
+### Status
+
+Accepted (2026-11-18). Planned for 0.11.0, not released. The owner approved the plan in session on 2026-11-18.
+
+### Context
+
+The owner asked for a study of `cursor/plugins/pstack` (commit `536a335`, MIT) and for the parts that benefit this plugin. pstack routes by task type and optimizes for an agent that works without stopping; this plugin routes by risk and stops at human gates. A first list of seven candidates went through a second-pass review that tested each claim, and five remained.
+
+### Decision
+
+- **An Enforcement table in `docs/tracking/ARCHITECTURE.md`.** One row per router invariant and lane gate, naming what checks it. Before this, the mapping was spread over `docs/behavior-checks.md`, ADR-003, ADR-009, and the hook, and a rule with no check was not visible. Five of the 12 invariants have no check.
+- **A digest of the Invariants section in that table, checked by a unit test.** Of the 8 commits that changed an invariant bullet after the first, 5 only reworded bullets, so a row count alone would not show that the table needs a look.
+- **Review: a runtime-behavior finding of Critical or Important severity in the Engineering pass carries a command and its output.** A finding that cannot be run is kept and labeled `not reproduced`. pstack drops such a finding; this plugin keeps it, because a security defect is often not safe to run.
+- **Checkpoints reference: read a merge back.** A merge command can return success when the merge is only queued.
+- **Debug: test a shared assumption before a third fix.** The existing stop after three failed fixes stays.
+- **Fixture repositories get a Git identity and commit message without the words fixture, test, eval, or sample.** In the seeded `close` and `gamed` repositories no file holds those words, so the Git log was the only place that did.
+
+### Consequences
+
+- The three skill rules are wording only. No behavior case covers them, and the release run for 0.11.0 is the first observation. The `gamed` and `weakened` cases use the review skill and can change score.
+- An edit to a router invariant now fails `scripts/test_skills.py`, and CI, until the digest in the table is updated.
+- The digest makes a person look at the table. It does not check that a row is right, and a named enforcer can cover only part of its rule.
+- The fixture address still ends in `example.invalid`. Whether agents read the Git log in a case is not measured.
+
+### Alternatives rejected
+
+- **pstack's rule to never block on the human, its automatic merges, and its option to skip planning.** They remove the gates this plugin exists to keep.
+- **Routing by task type with a playbook per type.** It would be a second router next to the risk lanes.
+- **Binding verification to `git patch-id`.** Tested in a scratch repository: after a clean rebase the patch-id was unchanged and a check that had passed then failed. An equal patch-id does not show that earlier proof still holds.
+- **An evidence-strength ladder and a shared worker file.** The verify skill and `references/economy.md` already state both; a second statement adds text and no check.
+- **Dropping a review finding that was not reproduced.** See Decision.
+- **A behavior case for each new rule.** Each case adds paid runs to every release. Decide after the release run.
+
+### Revisit when
+
+- The release run shows a lower score for `gamed` or `weakened` than 0.10.0 did.
+- Reviews often label findings `not reproduced` where a run was possible. Then the label is used as a way out.
+- The digest is updated more than once in commits that leave the table rows unchanged and give no reason.

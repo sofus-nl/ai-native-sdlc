@@ -1,8 +1,11 @@
 """Checks on the skill files that both hosts load (stdlib only)."""
 
+import hashlib
 import re
 import unittest
 from pathlib import Path
+
+from behavior_check import CASES
 
 SKILLS = Path(__file__).resolve().parents[1] / 'skills'
 REFERENCES = SKILLS / 'ai-native-sdlc' / 'references'
@@ -100,6 +103,37 @@ class SkillFilesTest(unittest.TestCase):
         text = (REFERENCES / 'artifact-contracts.md').read_text(encoding='utf-8')
         self.assertRegex(fileSection(text, 'spec.md'), re.compile(r'abuse case', FLAGS))
         self.assertRegex(fileSection(text, 'plan.md'), re.compile(r'dependency record|registry|lockfile', FLAGS))
+
+    def test_enforcement_table_follows_the_router_and_names_real_enforcers(self):
+        root = SKILLS.parent
+        doc = (root / 'docs' / 'tracking' / 'ARCHITECTURE.md').read_text(encoding='utf-8')
+        section = re.search(r'^## Enforcement\n.*?(?=^## |\Z)', doc, re.DOTALL | re.MULTILINE)
+        self.assertTrue(section, 'docs/tracking/ARCHITECTURE.md has no Enforcement section')
+        router = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
+        invariants = re.search(r'^## Invariants\n(.*?)(?=^## )', router, re.DOTALL | re.MULTILINE).group(1).strip()
+        digest = hashlib.sha256(invariants.encode('utf-8')).hexdigest()[:12]
+        self.assertEqual(re.findall(r'^Invariants digest: `(\w+)`$', section.group(0), re.MULTILINE), [digest],
+                         'a router invariant changed: check each row of the table, then record this digest')
+        rows = [r for r in section.group(0).splitlines() if r.startswith('| ')][2:]
+        # 5 is the number of lane gates the table lists below the invariants.
+        self.assertEqual(len(rows), len(re.findall(r'^- ', invariants, re.MULTILINE)) + 5)
+        guard = (root / 'hooks' / 'edit_guard.py').read_text(encoding='utf-8')
+        for row in rows:
+            cell = row.rstrip('|').rsplit('|', 1)[1].strip()
+            tokens = re.findall(r'`([^`]+)`', cell)
+            self.assertTrue(tokens or cell == 'none', row)
+            for token in tokens:
+                with self.subTest(token):
+                    if token.startswith('case:'):
+                        found = token[5:] in CASES
+                    elif token.startswith('edit_guard.'):
+                        found = re.search(rf'^def {re.escape(token[11:])}\(', guard, re.MULTILINE)
+                    else:
+                        stem, method = token.split('.')
+                        found = stem.startswith('test_') and method.startswith('test_') and re.search(
+                            rf'^    def {re.escape(method)}\(', (root / 'scripts' / f'{stem}.py').read_text(encoding='utf-8'),
+                            re.MULTILINE)
+                    self.assertTrue(found, 'the table names an enforcer that does not exist')
 
 
 if __name__ == '__main__':
