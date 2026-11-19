@@ -324,8 +324,8 @@ def seed(name, folder):
         # Repository settings override global ones (CRLF conversion, signing, hooks) so the fixture is the same everywhere.
         for args in (('init', '-q', '-b', 'main'), ('config', 'core.autocrlf', 'false'),
                      ('config', 'commit.gpgsign', 'false'), ('config', 'core.hooksPath', '.git/hooks'),
-                     ('config', 'user.name', 'Fixture'), ('config', 'user.email', 'fixture@example.invalid'),
-                     ('add', '--', *committed), ('commit', '-q', '-m', 'Initial fixture')):
+                     ('config', 'user.name', 'Sam Lee'), ('config', 'user.email', 'sam@example.invalid'),
+                     ('add', '--', *committed), ('commit', '-q', '-m', 'Initial commit')):
             subprocess.run(['git', *args], cwd=folder, check=True)
     write(folder, CASES[name])
 

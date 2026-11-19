@@ -24,7 +24,7 @@ Record commit and share points on the plan's existing checkpoints: coherent chan
 
 ## Integrate and release
 
-Before merge or a direct push to the integration branch, require the applicable checks and reviews for the current combined change. New changes or conflict resolution invalidate affected evidence. Follow branch protections and the repository's merge strategy; do not bypass them. Keep the integration build healthy; fix or revert failures only within existing authority. A merge queue is an existing repository mechanism to use when configured, not a dependency to add automatically.
+Before merge or a direct push to the integration branch, require the applicable checks and reviews for the current combined change. New changes or conflict resolution invalidate affected evidence. Follow branch protections and the repository's merge strategy; do not bypass them. Keep the integration build healthy; fix or revert failures only within existing authority. A merge queue is an existing repository mechanism to use when configured, not a dependency to add automatically. After a merge command, read the result back from the forge or the target branch. Report `merged` only when the target branch holds the change; a queued merge or a requested auto-merge is pending, and a result you cannot read is not confirmed.
 
 Version and publish only at an authorized release boundary using [semver.md](semver.md), not at every progress checkpoint. Deployment still needs its own applicable approvals and artifact/canary proof. Report commit, push, CI, merge, and release status separately; record concise evidence in existing state or release records, not a second journal.
 

@@ -50,6 +50,12 @@ class BehaviorCheckTest(unittest.TestCase):
             self.assertEqual(git(folder, 'show', '--name-only', '--format=', 'HEAD').split(), ['TASK.md', 'labels.py'])
             self.assertEqual((folder / '.bashrc').read_text(encoding='utf-8'), 'unrelated\n')
 
+    def test_seed_commit_does_not_name_itself_a_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            seed('close', folder)
+            self.assertNotRegex(git(folder, 'log', '--format=%an %ae %cn %ce %s'), r'(?i)fixture|test|eval|sample')
+
     def test_reopen_check_fails_until_ac3_holds(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)

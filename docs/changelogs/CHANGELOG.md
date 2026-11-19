@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 - Unreleased
+
+- Verification: `scripts/test_edit_guard.py` (34 tests), `scripts/test_skills.py` (9), and `scripts/test_behavior_check.py` (8) pass. Not run: the behavior suite, Codex, and CI. The three skill rules below are proven as wording only; no behavior case covers them.
+- Skills, added (review): an Engineering-pass Critical or Important finding that claims wrong runtime behavior carries the command that shows the failure and its output. The reviewer runs it without editing the reviewed change. A finding the reviewer cannot run is kept and labeled `not reproduced`.
+- Skills, added (debug): when two failed fixes rest on the same assumption, the agent writes it down and tests it before a third fix.
+- Skills, added (checkpoints reference): after a merge command the agent reads the result back and reports `merged` only when the target branch holds the change. A queued merge or a requested auto-merge is pending. `docs/behavior-checks.md` has a decision check for it.
+- Docs, added: `docs/tracking/ARCHITECTURE.md` has an Enforcement table with one row per router invariant and lane gate, naming the hook function, unit test, or behavior case that checks it, or `none`. Five of the 12 invariants have `none`. `scripts/test_skills.py` fails when a named enforcer does not exist, when the row count is wrong, or when the Invariants section changes without the table's digest being updated.
+- Behavior checks: a seeded fixture repository is committed as `Sam Lee <sam@example.invalid>` with the message `Initial commit`, in place of `Fixture <fixture@example.invalid>` and `Initial fixture`. The effect on case results is not measured.
+- Source: a review of `cursor/plugins/pstack` at `536a335`. No text was copied. ADR-010 lists what was adopted and what was rejected.
+
 ## 0.10.0 - 2026-11-15
 
 - Verification: `scripts/test_edit_guard.py` (34 tests), `scripts/test_skills.py` (8), and `scripts/test_behavior_check.py` (7) pass, and CI passed with its new zizmor step. The full behavior suite ran on the release skill and hook text on Claude Code; 18 of 20 cases passed all 3 runs. `model-override` is not stable and `dependency` missed 2 of 9 runs; both are described below. Two isolated reviewers approved the complete change, the merged eval fix (third round), and the last judge wording (second round); these release notes were reviewed last.

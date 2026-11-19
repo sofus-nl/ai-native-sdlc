@@ -13,7 +13,7 @@ When invoked directly, first read `../ai-native-sdlc/SKILL.md` and confirm the l
 2. Reproduce it or explain why reproduction is unavailable. Distinguish current evidence from reports and hypotheses.
 3. Trace backward through every caller and boundary until the first incorrect state or assumption is found. Inspect sibling callers before choosing the fix point.
 4. Form one falsifiable root-cause hypothesis and run the smallest discriminating check.
-5. If disproved, record the result and form the next hypothesis. After three failed fix attempts, stop patching and reassess architecture, environment, and the original intent with the user.
+5. If disproved, record the result and form the next hypothesis. When two failed fixes rest on the same assumption, write that assumption down and test it with one discriminating check before a third fix. After three failed fix attempts, stop patching and reassess architecture, environment, and the original intent with the user.
 6. Route the repair:
    - wrong desired outcome or constraint -> `ai-native-shape`
    - wrong design or approach -> `ai-native-plan`
