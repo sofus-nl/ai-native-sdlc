@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.1 - Unreleased
+
+- Verification: documentation-only; no skill, hook, or eval case changed, so the behavior suite did not run. `scripts/test_edit_guard.py` (34 tests), `scripts/test_skills.py` (9), and `scripts/test_behavior_check.py` (8) pass on Claude Code 2.1.329, native Windows.
+- Checked, no change needed: four hook changes in Claude Code 2.1.325 to 2.1.329 against `hooks/edit_guard.py`. Scheduled tasks ask before a skill that declares hooks (2.1.325): no skill here declares one. `"decision": "block"` holds in more cases (2.1.326): the Stop branch prints one only when a review or verification is owed, one time per stop, and the 0.11.0 manual harness passed on 2.1.327. A Monitor is listed as `monitor` in `background_tasks` (2.1.329): the hook tests only that the list is not empty. A PreToolUse hook that errors in Code Mode does not refuse the call (2.1.329): the guard is fail-open by design. Not run: a live session on 2.1.329.
+- Docs: the README names Claude Code 2.1.319 as the minimum for `claude plugin eval`.
+- Docs: ADR-011 records the six proposals of the 2026-11-20 weekly research and why none is adopted. A path-based minimum lane and a flaky-check rule were each replayed over 1,085 local transcripts (80 plugin sessions, 4,080 edits) and found no case they would have changed. The pruning pass waits for a change of the pinned model.
+- Docs: ADR-003 points to the 0.9.0 amendment where it says Codex has no guard. Corrected there through ADR-011: `codex exec` can load a plugin's hooks with `--dangerously-bypass-hook-trust`.
+- Still open: Codex has not been run since 0.7.0.
+
 ## 0.11.0 - 2026-11-19
 
 - Verification: `scripts/test_edit_guard.py` (34 tests), `scripts/test_skills.py` (9), and `scripts/test_behavior_check.py` (8) pass, and CI passed on the merged commit `f728afa`. The full behavior suite ran on that commit on Claude Code; 16 of 20 cases passed all 3 runs. Three of the four misses passed 6 of 6 in a rerun; `model-override` is not stable, as on 0.10.0. The three skill rules below are proven as wording only: no behavior case covers them, and none of the three situations came up in a run that was read.
