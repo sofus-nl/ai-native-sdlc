@@ -117,8 +117,8 @@ A plugin runs with your rights, so review it before you trust it. This one ships
 An update replaces the files you reviewed. To stay on a reviewed revision, pin the marketplace when you add it:
 
 ```sh
-claude plugin marketplace add sofus-nl/ai-native-sdlc@v0.11.0
-codex plugin marketplace add sofus-nl/ai-native-sdlc --ref v0.11.0
+claude plugin marketplace add sofus-nl/ai-native-sdlc@v0.12.0
+codex plugin marketplace add sofus-nl/ai-native-sdlc --ref v0.12.0
 ```
 
 - **Claude Code, tag:** the suffix takes a branch or a tag. Auto-update is off by default for a third-party marketplace such as this one; check it under `/plugin` > Marketplaces.
