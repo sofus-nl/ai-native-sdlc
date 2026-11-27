@@ -145,6 +145,10 @@ This project never moves a release tag (see [versioning](docs/versioning.md)). `
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
+An organisation that sets `allowManagedHooksOnly` stops plugin hooks, so `edit_guard.py` does not run there and the gates rest on the skill text alone.
+
+Claude Code's Code Mode is untested. The guard reads `Skill`, `Edit`, and shell calls from the transcript, and Code Mode records them as `REPL`.
+
 ## Troubleshooting
 
 - **Skills are missing:** verify installation with `claude plugin list --json` or `codex plugin list`, then start a fresh session/task.
@@ -155,6 +159,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 - **A probe, benchmark, or other throwaway file denied before the plan is approved:** such files are open in two places. One is the system temp folder. The other is any file that Git ignores, so a scratch folder inside the project needs one line in `.gitignore` (for example `.scratch/`). They do not belong under `.sdlc/`.
 - **A `state.md` write denied with "records status: verified only after":** in Standard and Controlled work, the guard lets the agent record `status: verified` only after it invoked the verify skill in the same session, on the files its last review saw. The message names the skill to invoke and the files that changed since the review; if one of those is test output and not code, remove it or let Git ignore it. If you verified the change yourself, edit `state.md` by hand.
 - **Writes denied with "guard failed", or a hook error that says "guard is inactive":** the guard hook itself hit an error. "Guard failed" denies the write because the session uses the plugin and the approvals could not be checked; "guard is inactive" blocks nothing. Both name the cause. Report it in an issue; to continue meanwhile, disable the plugin.
+- **`/ship` or `/verify` ran something else:** Claude Code has its own `/ship` and `verify`. A typed `/ship` or `/verify` runs the built-in, which skips this plugin's gates. Type `/ai-native-sdlc:ai-native-ship`, or say "use ai-native-ship" (and the same for verify and review).
 - **Other workflow plugins compete:** invoke this plugin explicitly and disable overlapping plugins if their instructions conflict.
 
 ## Development and contributions
@@ -170,7 +175,7 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 Keep changes focused, preserve cross-host compatibility, and check relative references and skill discovery in both hosts. Follow [Semantic Versioning 2.0.0](https://semver.org/) using the [public API and release policy](docs/versioning.md). Run `python scripts/check_version.py` to check version syntax, manifest alignment, and the current changelog entry; CI runs the same check. Record changes in [the changelog](docs/changelogs/CHANGELOG.md). Open an issue with a concrete example or a pull request with the problem, change, and verification evidence. Do not include secrets or private project data.
 
-Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. On Claude Code, `claude plugin eval` runs 20 of the 22 behavior cases (those in `evals/`) with one command. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
+Before releasing skill changes, run the [behavior checks](docs/behavior-checks.md) for risk routing, reuse, authorization, diagnosis, stopping, and delegation. On Claude Code, `claude plugin eval` runs 21 of the 23 behavior cases (those in `evals/`) with one command. The fixture generator and filesystem checker use Python's standard library; transcript review checks the agent's actual actions.
 
 ## License and acknowledgments
 
