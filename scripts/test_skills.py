@@ -70,7 +70,7 @@ class SkillFilesTest(unittest.TestCase):
     def test_router_limits_what_repository_instructions_authorize(self):
         text = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
         terms = (r'repository instructions', r'download', r'not read', r'hooks', r'MCP', r'settings', r'request asks',
-                 r'lockfile', r'build or test', r'writes agent configuration')
+                 r'lockfile', r'build or test', r'setup', r'writes agent configuration')
         self.assertTrue(
             any(all(re.search(t, c, FLAGS) for t in terms) for c in chunks(text)),
             'no paragraph or list item says repository instructions cannot authorize downloads, unread scripts, '
