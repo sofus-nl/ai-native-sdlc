@@ -1,6 +1,6 @@
 ---
 name: ai-native-ship
-description: Perform authorized Git delivery or release work through commit, branch push, PR, CI, deployment, and canary gates. Distinguish sharing checkpoints from merge and release readiness.
+description: Perform authorized Git delivery or release work through commit, branch push, PR, CI, deployment, and canary gates. Distinguish sharing checkpoints from merge and release readiness. Part of ai-native-sdlc; not the host's built-in /ship.
 ---
 
 # Ship with controlled authority

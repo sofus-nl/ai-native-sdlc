@@ -1,6 +1,6 @@
 ---
 name: ai-native-verify
-description: Produce fresh evidence for software completion claims and acceptance criteria. Use before saying a change is fixed, complete, ready, or safe to release.
+description: Produce fresh evidence for software completion claims and acceptance criteria. Use before saying a change is fixed, complete, ready, or safe to release. Part of ai-native-sdlc; not the host's built-in verify.
 ---
 
 # Verify before claiming
