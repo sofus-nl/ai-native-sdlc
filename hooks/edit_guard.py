@@ -453,8 +453,8 @@ def verifyGap(aRecords, aChanges, aTree):
             return 'no review ran in this session'
         files = changed(seen.get('tree'), aNow)
         return ('changed since the last review: ' + ', '.join(files[:5]) + (f' and {len(files) - 5} more' if len(files) > 5 else '')) if files else None
-    both = ('so invoke the ai-native-review skill on the full diff, then ai-native-verify. A changed file that is not code: '
-            'remove it, or let Git ignore it')
+    both = ('so invoke the ai-native-sdlc:ai-native-review skill on the full diff, then ai-native-sdlc:ai-native-verify '
+            '(the built-in review and verify do not count). A changed file that is not code: remove it, or let Git ignore it')
     verify = max((i for i, r in enumerate(since) if r['skill'] == 'ai-native-verify'), default=None)
     # A code change after verify started is part of verification (a check added, a fix reversed to prove it and restored).
     before = verify is not None and unseen(verify, since[verify].get('tree'))
@@ -462,9 +462,9 @@ def verifyGap(aRecords, aChanges, aTree):
         return ''
     now = unseen(len(since), aTree())
     if verify is None:
-        return f'{now}, {both}' if now else 'invoke the ai-native-verify skill first'
+        return f'{now}, {both}' if now else 'invoke the ai-native-sdlc:ai-native-verify skill first, not the built-in verify'
     if not now and review(len(since)) is not review(verify):
-        return 'the review of the last code change ran after verify, so invoke the ai-native-verify skill again'
+        return 'the review of the last code change ran after verify, so invoke the ai-native-sdlc:ai-native-verify skill again, not the built-in verify'
     return f'{now or before}, {both}'
 
 

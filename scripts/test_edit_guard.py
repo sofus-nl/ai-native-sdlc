@@ -488,6 +488,9 @@ class EditGuardTest(unittest.TestCase):
                 self.assertIn('ai-native-verify skill first', run('WR'))
                 self.assertIn('ai-native-review', run('W'))
                 self.assertIn('ai-native-review', run('RW'))
+                self.assertIn('not the built-in verify', run(''))
+                self.assertIn('not the built-in verify', run('RWVR'))
+                self.assertIn('the built-in review and verify do not count', run('W'))
                 # Verify on the code the review saw passes; a change between them needs a new review.
                 for allowed in ('V', 'RV', 'WRV', 'RWRV', 'WRVW', 'RVW'):
                     self.assertEqual(run(allowed), '', allowed)
