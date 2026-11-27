@@ -203,6 +203,9 @@ class EditGuardTest(unittest.TestCase):
             # Keys and values match case-insensitively.
             self.assertIsNotNone(decideStop(stop))
             self.assertIsNotNone(decideStop({**stop, 'background_tasks': []}))
+            # The message names the plugin's skills, and says the built-ins do not count.
+            self.assertIn('ai-native-sdlc:ai-native-verify', decideStop(stop))
+            self.assertIn('do not count', decideStop(stop))
             # A turn that ends while background work runs is paused, not finished.
             running = [{'id': 'b1', 'type': 'subagent', 'status': 'running', 'description': 'builder'}]
             self.assertIsNone(decideStop({**stop, 'background_tasks': running}))
@@ -491,6 +494,7 @@ class EditGuardTest(unittest.TestCase):
                 self.assertIn('not the built-in verify', run(''))
                 self.assertIn('not the built-in verify', run('RWVR'))
                 self.assertIn('the built-in review and verify do not count', run('W'))
+                self.assertIn('ai-native-sdlc:ai-native-verify', run(''))
                 # Verify on the code the review saw passes; a change between them needs a new review.
                 for allowed in ('V', 'RV', 'WRV', 'RWRV', 'WRVW', 'RVW'):
                     self.assertEqual(run(allowed), '', allowed)

@@ -671,7 +671,8 @@ def decideStop(aEvent):
     status = re.search(r'^status:\s*(\w+)', state, re.M | re.I)
     if lane and lane.group(1).lower() in GATES and status and status.group(1).lower() in ('building', 'reviewing'):
         return (f'{path.parent.name} is at status: {status.group(1)}. Finish the lifecycle before stopping: invoke '
-                'the ai-native-review skill on the full diff, then ai-native-verify; or, if you need a human decision, '
+                'the ai-native-sdlc:ai-native-review skill on the full diff, then ai-native-sdlc:ai-native-verify '
+                '(the built-in review and verify do not count); or, if you need a human decision, '
                 'set status: blocked with a blocker and next_action. Blocked means waiting on a human only.')
     return None
 
