@@ -1,6 +1,6 @@
 ---
 name: ai-native-review
-description: Independently review a completed software diff for intent compliance, defects, security, and unnecessary complexity. Use after implementation and before verification or release.
+description: Independently review a completed software diff for intent compliance, defects, security, and unnecessary complexity. Use after implementation and before verification or release. Part of ai-native-sdlc; not the host's built-in /review or /code-review.
 ---
 
 # Review the change

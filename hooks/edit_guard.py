@@ -453,8 +453,8 @@ def verifyGap(aRecords, aChanges, aTree):
             return 'no review ran in this session'
         files = changed(seen.get('tree'), aNow)
         return ('changed since the last review: ' + ', '.join(files[:5]) + (f' and {len(files) - 5} more' if len(files) > 5 else '')) if files else None
-    both = ('so invoke the ai-native-review skill on the full diff, then ai-native-verify. A changed file that is not code: '
-            'remove it, or let Git ignore it')
+    both = ('so invoke the ai-native-sdlc:ai-native-review skill on the full diff, then ai-native-sdlc:ai-native-verify '
+            '(the built-in review and verify do not count). A changed file that is not code: remove it, or let Git ignore it')
     verify = max((i for i, r in enumerate(since) if r['skill'] == 'ai-native-verify'), default=None)
     # A code change after verify started is part of verification (a check added, a fix reversed to prove it and restored).
     before = verify is not None and unseen(verify, since[verify].get('tree'))
@@ -462,9 +462,9 @@ def verifyGap(aRecords, aChanges, aTree):
         return ''
     now = unseen(len(since), aTree())
     if verify is None:
-        return f'{now}, {both}' if now else 'invoke the ai-native-verify skill first'
+        return f'{now}, {both}' if now else 'invoke the ai-native-sdlc:ai-native-verify skill first, not the built-in verify'
     if not now and review(len(since)) is not review(verify):
-        return 'the review of the last code change ran after verify, so invoke the ai-native-verify skill again'
+        return 'the review of the last code change ran after verify, so invoke the ai-native-sdlc:ai-native-verify skill again, not the built-in verify'
     return f'{now or before}, {both}'
 
 
@@ -671,7 +671,8 @@ def decideStop(aEvent):
     status = re.search(r'^status:\s*(\w+)', state, re.M | re.I)
     if lane and lane.group(1).lower() in GATES and status and status.group(1).lower() in ('building', 'reviewing'):
         return (f'{path.parent.name} is at status: {status.group(1)}. Finish the lifecycle before stopping: invoke '
-                'the ai-native-review skill on the full diff, then ai-native-verify; or, if you need a human decision, '
+                'the ai-native-sdlc:ai-native-review skill on the full diff, then ai-native-sdlc:ai-native-verify '
+                '(the built-in review and verify do not count); or, if you need a human decision, '
                 'set status: blocked with a blocker and next_action. Blocked means waiting on a human only.')
     return None
 
@@ -693,7 +694,7 @@ def main():
     event = None
     ROUTED.clear()
     try:
-        event = json.load(sys.stdin)
+        event = json.loads(sys.stdin.buffer.read().decode('utf-8'))
         output = main_event(event)
     except Exception as error:
         failure = f'{type(error).__name__}: {error}'

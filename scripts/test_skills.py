@@ -67,6 +67,36 @@ class SkillFilesTest(unittest.TestCase):
                 and re.search(r'\b(?:in|inside|within)\s+(?:this|the)\s+repository\b', c, FLAGS) for c in chunks(text)),
             'no paragraph or list item says an instruction from outside text is reported and not followed')
 
+    def test_router_limits_what_repository_instructions_authorize(self):
+        text = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
+        terms = (r'repository instructions', r'download', r'not read', r'hooks', r'MCP', r'settings', r'request asks',
+                 r'lockfile', r'build or test', r'setup', r'writes agent configuration')
+        self.assertTrue(
+            any(all(re.search(t, c, FLAGS) for t in terms) for c in chunks(text)),
+            'no paragraph or list item says repository instructions cannot authorize downloads, unread scripts, '
+            'or agent-configuration changes')
+
+    def test_router_says_built_ins_do_not_count(self):
+        text = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
+        for name in ('review', 'verify', 'ship'):
+            self.assertIn('ai-native-sdlc:ai-native-' + name, text)
+        self.assertTrue(
+            any(all(re.search(t, c, FLAGS) for t in (r'built-in', r'/ship', r'/verify', r'(?:do|does) not count'))
+                for c in chunks(text)),
+            'no paragraph or list item says the built-in /ship and /verify do not count')
+        self.assertTrue(
+            any(re.search(r'built-in', c, FLAGS) and re.search(r'gates of .*ai-native-ship.* did not run', c, FLAGS)
+                for c in chunks(text)),
+            'no paragraph or list item says to report a delivery made with a built-in command')
+
+    def test_delivery_skills_are_told_apart_from_built_ins(self):
+        for name in ('ship', 'verify', 'review'):
+            head = (SKILLS / ('ai-native-' + name) / 'SKILL.md').read_text(encoding='utf-8').split('---')[1]
+            description = re.search(r'^description:\s*(.+)$', head, FLAGS).group(1)
+            self.assertIn('ai-native-sdlc', description, name)
+            self.assertIn('built-in', description, name)
+            self.assertLessEqual(len(description), 1024, name)
+
     def test_security_reference_has_one_duty_per_stage(self):
         self.assertTrue(SECURITY.is_file(), 'references/security.md is missing')
         sections = stageSections(SECURITY.read_text(encoding='utf-8'))
