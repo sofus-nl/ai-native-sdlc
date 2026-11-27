@@ -693,7 +693,7 @@ def main():
     event = None
     ROUTED.clear()
     try:
-        event = json.load(sys.stdin)
+        event = json.loads(sys.stdin.buffer.read().decode('utf-8'))
         output = main_event(event)
     except Exception as error:
         failure = f'{type(error).__name__}: {error}'

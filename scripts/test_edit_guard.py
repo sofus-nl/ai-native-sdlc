@@ -675,7 +675,7 @@ class EditGuardTest(unittest.TestCase):
     def test_guard_failure(self):
         def run(aInput, aBroken=None):
             out, err = io.StringIO(), io.StringIO()
-            patches = [mock.patch('sys.stdin', io.StringIO(aInput)), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err)]
+            patches = [mock.patch('sys.stdin', io.TextIOWrapper(io.BytesIO(aInput.encode('utf-8')), encoding='utf-8')), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err)]
             patches += [mock.patch.object(edit_guard, aBroken, side_effect=RuntimeError('boom'))] if aBroken else []
             with contextlib.ExitStack() as stack:
                 for patch in patches:
@@ -725,6 +725,25 @@ class EditGuardTest(unittest.TestCase):
             code, out, err = run(json.dumps({'hook_event_name': 'Stop', 'transcript_path': routed, 'cwd': folder}), 'readState')
             self.assertEqual((code, out), (1, ''))
             self.assertIn('guard is inactive', err)
+
+    def test_non_ascii_input_on_a_code_page_stdin(self):
+        # Native Windows decodes piped stdin with the code page; the hook must read the bytes as UTF-8 itself.
+        with tempfile.TemporaryDirectory() as folder:
+            state = change(folder, 'x', 'lane: standard\nstatus: building\n')
+            routed = transcript(folder, 'Lane: Standard', aState=state)
+            event = {'tool_name': 'Edit', 'tool_input': {'file_path': str(Path(folder) / 'ō.py')},
+                     'cwd': folder, 'transcript_path': routed}
+            stdin = io.TextIOWrapper(io.BytesIO(json.dumps(event, ensure_ascii=False).encode('utf-8')), encoding='cp1252')
+            out, err = io.StringIO(), io.StringIO()
+            with mock.patch('sys.stdin', stdin), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    edit_guard.main()
+                except SystemExit as stop:
+                    err.write(str(stop.code))
+            out, err = out.getvalue(), err.getvalue()
+            self.assertNotIn('UnicodeDecodeError', out + err)
+            self.assertNotIn('guard failed', out)
+            self.assertEqual(json.loads(out)['hookSpecificOutput']['permissionDecision'], 'deny')  # no plan approval
 
     PACKAGE_ADDS = [
         'npm install left-pad', 'npm i -D left-pad', 'pnpm add left-pad', 'yarn add left-pad', 'bun add left-pad',
