@@ -34,7 +34,7 @@ A gate that fails sends work back to the layer at fault, and every downstream ga
 
 Each row is one invariant of the router skill (`skills/ai-native-sdlc/SKILL.md`, section Invariants, in order) or one lane gate. The last column names what checks the rule apart from the skill text: a function of the guard hook (`edit_guard.<function>`, Claude Code only), a unit test (`<file>.<test>`), or a behavior case (`case:<name>`, see [behavior-checks.md](../behavior-checks.md)). `none` means only the skill text states the rule. A behavior case runs at a release, not on every change, and a named enforcer can cover only part of its rule.
 
-Invariants digest: `47bbfae8bbab`
+Invariants digest: `b25378a6662b`
 
 `scripts/test_skills.py` fails when the Invariants section changes. Then check each row, and record the digest that the failure message prints.
 
