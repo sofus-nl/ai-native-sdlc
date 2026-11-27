@@ -40,7 +40,7 @@ Close the attack path that two live campaigns use (Bitdefender, 17 Nov; AIR Secu
 - A skill wording change needs the full suite (`docs/behavior-checks.md`). Skill descriptions steer which skill loads, so the suite also checks goal 5: `gamed`, `weakened`, and `reopen` (the cases that grade those skills) must still reach review and verify. No case grades `ai-native-ship`, so the manual probe covers ship.
 - Goal 5 also edits the completion invariant, so the digest changes once for goals 1 and 5 together.
 - Fixture rules from ADR-010: a Git identity and commit message without the words fixture, test, eval, or sample.
-- Docs to update: ADR-011 in `docs/tracking/DECISIONS.md` (decision 1), a 0.12.0 entry in `docs/changelogs/CHANGELOG.md`, the README, `docs/behavior-checks.md` (new case, run host), and the version files per `docs/versioning.md`.
+- Docs to update: ADR-012 in `docs/tracking/DECISIONS.md` (decision 1), a 0.12.0 entry in `docs/changelogs/CHANGELOG.md`, the README, `docs/behavior-checks.md` (new case, run host), and the version files per `docs/versioning.md`.
 
 ## Approaches
 

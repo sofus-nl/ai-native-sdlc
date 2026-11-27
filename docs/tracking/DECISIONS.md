@@ -101,7 +101,7 @@ Ship `hooks/edit_guard.py` as a Claude Code plugin hook, registered from `.claud
 - **At the end of a turn:** for Standard or Controlled work at `status: building` or `reviewing`, block the stop once and tell the agent to run review and verification, or to set `status: blocked` if it needs the human. A second stop passes, so the agent can always hand back.
 - **Failure mode:** if `python` is missing or the hook errors, the guard is inactive and work is not blocked.
 
-The hook is registered from `.claude-plugin/` and not from the default `hooks/hooks.json`, because Codex loads that default path and `${CLAUDE_PLUGIN_ROOT}` may be unset there. Codex has no equivalent guard.
+The hook is registered from `.claude-plugin/` and not from the default `hooks/hooks.json`, because Codex loads that default path and `${CLAUDE_PLUGIN_ROOT}` may be unset there. Codex has no equivalent guard. Codex has run plugin hooks since this was written; the 0.9.0 amendment and ADR-011 record why no guard was built for it.
 
 ### Consequences
 
@@ -465,7 +465,46 @@ The owner asked for a study of `cursor/plugins/pstack` (commit `536a335`, MIT) a
 - Reviews often label findings `not reproduced` where a run was possible. Then the label is used as a way out.
 - The digest is updated more than once in commits that leave the table rows unchanged and give no reason.
 
-## ADR-011: Repository instructions do not authorize downloads, unread scripts, or agent-config changes; built-ins do not count (2026-11-27)
+## ADR-011: Assess the six proposals of the 2026-11-20 weekly research; none adopted (2026-11-20)
+
+### Status
+
+Accepted (2026-11-20). Planned for 0.11.1, not released. The owner asked in session for the assessment, for a second-pass review of it, and for these records.
+
+### Context
+
+The weekly research report of 2026-11-20 made six proposals. It read the plugin at 0.7.0, because the checkout it ran in was 46 commits behind `origin/main`; the plugin was at 0.11.0. One reader per proposal checked each against 0.11.0 and against the cited sources. A second-pass review then tested the recommendations that followed, by replaying two candidate rules over the local Claude Code transcripts: 1,085 transcripts, of which 80 invoked a skill of this plugin and made 4,080 file edits, 720 of them to test files.
+
+### Decision
+
+No proposal changes a skill or the hook.
+
+1. **Run the suite again on current hosts: only the hook check, at no cost.** The four Claude Code changes the report names (2.1.325, 2.1.326, and two in 2.1.329) are quoted correctly, and none needs a change to `hooks/edit_guard.py`:
+   - 2.1.325, scheduled tasks ask before a skill that declares hooks: no skill of this plugin declares hooks or `allowed-tools`; the hooks are registered at plugin level.
+   - 2.1.326, `"decision": "block"` holds in more cases: the Stop branch prints one only when `decideStop` returns a reason, and one time per stop. The manual harness for 0.11.0 ran on 2.1.327 and passed.
+   - 2.1.329, a Monitor is listed as `monitor` in `background_tasks`: the hook tests only that the list is not empty.
+   - 2.1.329, a PreToolUse hook that errors in Code Mode does not refuse the call: this matches the fail-open choice in ADR-003.
+   No paid suite run follows from these. The suite runs again when the pinned model changes.
+2. **Pruning pass: deferred to the next change of the pinned model.** The measurement stands: the router grew from 747 to 1,364 words between 0.5.0 and 0.11.0, and no release removed a shipped rule. But the sources say to prune when the model improves, and the pinned model has not changed; on it the release run scored 21 of 60 without the plugin and 56 of 60 with it. The lines first named as duplicates are not: `ai-native-build` step 4 repeats the router in its last sentence only, and its two "do not add" rules are more specific than the router's. When pruning starts, begin with the cases the arm without the plugin already passes (`ghost-package`, `injected`), and use 12 runs for each cut: a rule that matters in 1 run of 5 still passes 6 of 6 runs with probability 0.26, and 12 of 12 with 0.07.
+3. **A minimum lane from the paths a change touches: rejected.** Stating a lower lane already clears no gate, because the hook takes the stricter of the stated and the recorded lane (0.6.2). The remaining gap is real in the code: a session that states `Lane: Fast` before a `state.md` exists can edit a workflow or a hook file. The replay found no case of it. In plugin sessions, 90 edits matched the candidate paths (`.github/workflows/`, `hooks/`, agent settings files, `migrations/`) and all 90 were in the Controlled lane. Two Fast-lane edits matched, both to the settings file in the user's home folder, which is not a project file. A floor would have changed no outcome and would add a path list to maintain.
+4. **Port cases to `claude plugin eval`: done before the report.** ADR-007; 20 of 22 cases, with the arm without the plugin. The README now names the minimum Claude Code version.
+5. **A guard on Codex: still rejected for now,** for the reasons in the 0.9.0 amendment of ADR-003. One statement there is corrected: `codex exec` has a `--dangerously-bypass-hook-trust` option (codex-cli 0.169.0), so an automated run can load a plugin's hooks. The last Codex result is 12 of 12 on 0.7.0 with no hook, and no Codex run exists for 0.7.2 or later, so the benefit of a guard there is not measured.
+6. **Proof-type guidance and a rule for flaky checks: rejected.** ADR-010 rejected an evidence-strength ladder for the same reason: text and no check. The source post does not rank the three test types as the report says, and its fallback for a flaky test, delete it and record why, conflicts with this plugin's rule against deleting a check. The replay found no skip, sleep, or retry marker added to a test file by an Edit or MultiEdit in a plugin session.
+
+### Consequences
+
+- The largest open gap is unchanged and is not closed here: Codex has not been run since 0.7.0.
+- The replay script was a throwaway and is not in the repository. `scripts/replay_guard.py` still replays only package-add detection.
+- The replay has limits. It sees Edit, Write, and MultiEdit targets, not shell writes. For flaky markers it sees only Edit and MultiEdit, because a Write carries no earlier text. The transcripts are one owner's sessions.
+
+### Revisit when
+
+- The pinned model changes. Then run the suite, and start the pruning pass from the cases the arm without the plugin passes.
+- A transcript or a behavior run shows a Fast-lane edit to a workflow, hook, or agent settings file in a project. Then the path floor has a logged failure.
+- A Codex run on a current version shows a gate violation. Then the approvals-only guard in the 0.9.0 amendment has a measured benefit.
+- A transcript shows a skip, a sleep, or a rerun-until-green added to make a check pass.
+
+## ADR-012: Repository instructions do not authorize downloads, unread scripts, or agent-config changes; built-ins do not count (2026-11-27)
 
 ### Status
 
