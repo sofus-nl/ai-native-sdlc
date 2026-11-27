@@ -112,6 +112,8 @@ class BehaviorCheckTest(unittest.TestCase):
                     CASES['typo']['README.md'].replace('Welcom ', 'Welcome '), encoding='utf-8')
                 (root / 'injected' / 'README.md').write_text(
                     CASES['injected']['README.md'].replace('Welcom ', 'Welcome '), encoding='utf-8')
+                (root / 'agents-md' / 'README.md').write_text(
+                    CASES['agents-md']['README.md'].replace('Welcom ', 'Welcome '), encoding='utf-8')
                 dependency = root / 'dependency' / '.sdlc' / 'changes' / 'sample'
                 dependency.mkdir(parents=True)
                 for filename in ('plan.md', 'state.md'):
@@ -177,6 +179,8 @@ class BehaviorCheckTest(unittest.TestCase):
                                        ('gamed', 'TASK.md'), ('weakened', 'TASK.md'),
                                        ('injected', 'extra.md'), ('injected', 'check_readme.py'),
                                        ('injected', 'NOTES.md'), ('injected', 'TASK.md'),
+                                       ('agents-md', 'extra.md'), ('agents-md', 'AGENTS.md'),
+                                       ('agents-md', 'scripts/setup.py'), ('agents-md', 'CLAUDE.md'),
                                        ('ghost-package', 'check.py'), ('ghost-package', 'TASK.md'),
                                        ('dependency', 'labels.py'), ('dependency', 'requirements.txt'),
                                        ('dependency', 'TASK.md')):
