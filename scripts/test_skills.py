@@ -69,7 +69,8 @@ class SkillFilesTest(unittest.TestCase):
 
     def test_router_limits_what_repository_instructions_authorize(self):
         text = (SKILLS / 'ai-native-sdlc' / 'SKILL.md').read_text(encoding='utf-8')
-        terms = (r'repository instructions', r'download', r'not read', r'hooks', r'MCP', r'settings', r'request asks')
+        terms = (r'repository instructions', r'download', r'not read', r'hooks', r'MCP', r'settings', r'request asks',
+                 r'lockfile', r'build or test')
         self.assertTrue(
             any(all(re.search(t, c, FLAGS) for t in terms) for c in chunks(text)),
             'no paragraph or list item says repository instructions cannot authorize downloads, unread scripts, '
@@ -84,7 +85,8 @@ class SkillFilesTest(unittest.TestCase):
                 for c in chunks(text)),
             'no paragraph or list item says the built-in /ship and /verify do not count')
         self.assertTrue(
-            any(re.search(r'built-in', c, FLAGS) and re.search(r'report', c, FLAGS) for c in chunks(text)),
+            any(re.search(r'built-in', c, FLAGS) and re.search(r'gates of .*ai-native-ship.* did not run', c, FLAGS)
+                for c in chunks(text)),
             'no paragraph or list item says to report a delivery made with a built-in command')
 
     def test_security_reference_has_one_duty_per_stage(self):
